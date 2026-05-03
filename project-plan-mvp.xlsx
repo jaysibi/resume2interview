@@ -1,0 +1,15 @@
+Task,Status,Owner,Start Date,End Date,Dependencies,Input Needed from User,Notes
+Finalize and prioritize MVP features,Completed,Product Owner,2026-04-30,2026-04-30,,No,
+Draft user stories and PRDs for each MVP component,Completed,Product Manager,2026-04-30,2026-04-30,,No,
+Define acceptance criteria for all features,Completed,Product Manager,2026-04-30,2026-04-30,,No,
+Plan sprints and releases (2-day MVP delivery),Completed,Product Owner,2026-04-30,2026-04-30,,No,
+Validate requirements with stakeholders and technical team,Completed,Product Owner,2026-04-30,2026-04-30,,No,
+Monitor progress and remove blockers,In Progress,Product Owner,2026-04-30,,All previous tasks,No,
+Implement Resume Upload and Parsing,In Progress,Software Developer,2026-04-30,,None,No,If you require any input from me, ask this right away.
+Implement JD Upload and Parsing,Not Started,Software Developer,,,,No,If you require any input from me, ask this right away.
+Implement Skill and Keyword Extraction,Not Started,AI Engineer,,,,No,If you require any input from me, ask this right away.
+Implement Gap Analysis and ATS Match Scoring,Not Started,AI Engineer,,,,No,If you require any input from me, ask this right away.
+Implement Achievement/Bullet Rewriting and Enhancement,Not Started,AI Engineer,,,,No,If you require any input from me, ask this right away.
+Implement ATS-safe Resume Formatting and Export,Not Started,Software Developer,,,,No,If you require any input from me, ask this right away.
+Implement ATS Score and Keyword Report Generation,Not Started,Software Developer,,,,No,If you require any input from me, ask this right away.
+Prepare for go-to-market activities (to be resumed when MVP is near completion),Not Started,Product Owner,,,,No,If you require any input from me, ask this right away.

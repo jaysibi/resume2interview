@@ -1,0 +1,20 @@
+================================================================================
+RESUME TAILOR - E2E TEST REPORT
+================================================================================
+Test Date: 2026-05-03 06:14:28
+Total Tests: 6
+Passed: 4
+Failed: 2
+Skipped: 0
+Success Rate: 66.7%
+
+FAILURES:
+--------------------------------------------------------------------------------
+Test: Gap Analysis Execution
+Error: Response missing 'match_percentage' field
+
+Test: ATS Scoring Execution
+Error: Response missing 'ats_score' field
+
+
+================================================================================

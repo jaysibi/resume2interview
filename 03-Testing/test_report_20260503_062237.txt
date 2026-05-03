@@ -1,0 +1,45 @@
+================================================================================
+RESUME TAILOR - E2E TEST REPORT
+================================================================================
+Test Date: 2026-05-03 06:22:37
+Total Tests: 6
+Passed: 6
+Failed: 0
+Skipped: 0
+Success Rate: 100.0%
+
+
+GAP ANALYSIS RESULTS:
+--------------------------------------------------------------------------------
+Match Score: 70%
+Missing Required Skills: Proficiency in writing and executing test cases independently, Familiarity with testing Windows UI applications, Familiarity with AJAX-driven UIs
+Missing Preferred Skills: Knowledge of Fixed Income trading or related financial domains, Experience with CRD (Charles River Development) or Aladdin, Familiarity with bug tracking tools such as Jira
+Strengths: Extensive experience in Quality Assurance and QA Automation tools, Strong stakeholder management and collaboration skills, Experience in data analytics and visualization tools such as Tableau and Power BI
+Weak Areas: Lack of specific experience with Fixed Income trading workflows, No mention of experience with specific trading systems like CRIMS or Eagle
+Recommendations:
+  1. Gain proficiency in writing and executing test cases specifically for Windows UI and AJAX-driven applications.
+  2. Familiarize yourself with Fixed Income trading concepts and workflows to better align with the job requirements.
+  3. Learn and gain experience with bug tracking tools such as Jira to enhance your QA capabilities.
+  4. Explore opportunities to gain experience with trading systems like CRIMS and Eagle to increase relevance to the job role.
+  5. Consider obtaining additional certifications or training related to financial trading systems to strengthen your application.
+
+ATS SCORING RESULTS:
+--------------------------------------------------------------------------------
+ATS Score: 78%
+Keyword Match: 70%
+Format Score: 85%
+Matched Keywords: QATesting, test cases, Windows UI applications, manual testing, Jira
+Missing Keywords: AJAX-driven UI, integration testing, CRIMS, CharlesRiverInvestment Management System, Eagle Trading systems, regression testing, user acceptance testing, Fixed Income trading, trading systems
+Issues Found (3):
+  1. [high] Missing 'AJAX-driven UI' keyword
+  2. [medium] Missing 'integration testing' keyword
+  3. [low] Contact information is not clearly separated from the profile section
+Recommendations:
+  1. Incorporate 'AJAX-driven UI' experience in the resume
+  2. Highlight experience with integration testing and relevant systems like CRIMS
+  3. Ensure contact information is clearly separated for better parsing
+  4. Add specific examples of Fixed Income trading experience if applicable
+  5. Use standard section headers such as 'Work Experience' and 'Education'
+  6. Consider adjusting formatting for better ATS compatibility
+
+================================================================================

@@ -1,0 +1,27 @@
+Role & responsibilities
+
+
+
+Overview:We are seeking a meticulousQATesterto write and execute test cases for a customized Windows UI application and next-gen AJAX-driven UI used by traders, with a specific focus on Fixed Income trading workflows.
+
+Responsibilities:
+
+Analyse business requirements and technical specifications to develop and execute comprehensive test cases.
+Conduct manual testing processes and procedures to ensure the quality and functionality of the Windows UI application and AJAX-driven UI.
+Perform integration testing with CRIMS (CharlesRiverInvestment Management System) and Eagle Trading systems.
+Document, track, and verify resolution of software defects in
+Collaborate closely with Business Analysts and Project Managers to validate application functionality against user needs.
+Contribute to process improvements within theQAfunction to enhance testing efficiency and effectiveness.
+Participate in regression testing, system integration testing, and user acceptance testing as required.
+Basic Qualifications:
+
+5+ years of experience inQAtesting roles.
+Proficiency in writing and executing test cases independently.
+Familiarity with testing Windows UI applications and AJAX-driven UIs.
+Strong analytical and problem-solving skills.
+Preferred Qualifications:
+
+Knowledge of Fixed Income trading or related financial domains.Trading Systems experience Strongly preferred CRD (CharlesRiverDevelopment) but will consider Aladdin.
+Experience with customized UI applications used in trading environments.
+Familiarity with bug tracking tools such as Jira or similar.
+Excellent communication skills and ability to collaborate effectively with Business Analysts, Project Managers, traders, and development teams.

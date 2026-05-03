@@ -1,0 +1,54 @@
+[2026-05-01 09:29:02,052] INFO: Starting CSV validation from: C:\Projects\ResumeTailor\02-Data\UpdatedResumeDataSet.csv
+[2026-05-01 09:29:02,058] INFO: Row 1 (Data Science): 670 words, 4746 chars
+[2026-05-01 09:29:02,062] INFO: Row 2 (Data Science): 163 words, 1241 chars
+[2026-05-01 09:29:02,062] INFO: Row 3 (Data Science): 265 words, 1853 chars
+[2026-05-01 09:29:02,063] INFO: Row 4 (Data Science): 993 words, 6877 chars
+[2026-05-01 09:29:02,064] INFO: Row 5 (Data Science): 69 words, 439 chars
+[2026-05-01 09:29:02,064] INFO: Row 6 (Data Science): 103 words, 695 chars
+[2026-05-01 09:29:02,065] INFO: Row 7 (Data Science): 241 words, 1679 chars
+[2026-05-01 09:29:02,066] INFO: Row 8 (Data Science): 1153 words, 8063 chars
+[2026-05-01 09:29:02,066] INFO: Row 9 (Data Science): 249 words, 1757 chars
+[2026-05-01 09:29:02,067] INFO: Row 10 (Data Science): 686 words, 4339 chars
+[2026-05-01 09:29:02,068] INFO: CSV validation complete: 10/10 successful
+[2026-05-01 09:29:40,629] INFO: Validating PDFs in: C:\Projects\ResumeTailor\02-Data\Resumes PDF\Data Science
+[2026-05-01 09:29:40,638] INFO: Found 200 PDF files
+[2026-05-01 09:29:40,639] INFO: Processing: 0.pdf
+[2026-05-01 09:29:40,744] INFO: Processing: 1.pdf
+[2026-05-01 09:29:40,770] INFO: Processing: 10.pdf
+[2026-05-01 09:29:40,794] INFO: Processing: 100.pdf
+[2026-05-01 09:29:40,821] INFO: Processing: 101.pdf
+[2026-05-01 09:29:40,844] INFO: PDF validation complete: 0/5 successful
+[2026-05-02 06:30:48,216] INFO: Loading sample resumes for AI validation...
+[2026-05-02 06:30:48,478] INFO: Validating AI extraction on 3 samples
+[2026-05-02 06:30:48,483] ERROR: Failed to initialize AI service: OPENAI_API_KEY environment variable not set
+[2026-05-02 06:31:30,173] INFO: Loading sample resumes for AI validation...
+[2026-05-02 06:31:30,175] INFO: Validating AI extraction on 3 samples
+[2026-05-02 06:31:30,828] INFO: AIService initialized with default model: gpt-4o-mini
+[2026-05-02 06:31:30,828] INFO: Extracting skills from sample 1...
+[2026-05-02 06:31:30,829] INFO: Extracting skills from resume (4746 chars)
+[2026-05-02 06:31:48,583] INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+[2026-05-02 06:31:48,644] INFO: LLM call successful. Model: gpt-4o-mini, Tokens: 2502, JSON mode: True
+[2026-05-02 06:31:48,645] INFO: Skills extracted: 47 skills, 1 experience entries, 0 education entries
+[2026-05-02 06:31:48,702] INFO: Extracting skills from sample 2...
+[2026-05-02 06:31:48,702] INFO: Extracting skills from resume (1241 chars)
+[2026-05-02 06:31:58,416] INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+[2026-05-02 06:31:58,425] INFO: LLM call successful. Model: gpt-4o-mini, Tokens: 1045, JSON mode: True
+[2026-05-02 06:31:58,426] INFO: Skills extracted: 7 skills, 1 experience entries, 1 education entries
+[2026-05-02 06:31:58,437] INFO: Extracting skills from sample 3...
+[2026-05-02 06:31:58,437] INFO: Extracting skills from resume (1853 chars)
+[2026-05-02 06:32:11,790] INFO: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+[2026-05-02 06:32:11,793] INFO: LLM call successful. Model: gpt-4o-mini, Tokens: 1709, JSON mode: True
+[2026-05-02 06:32:11,794] INFO: Skills extracted: 29 skills, 1 experience entries, 4 education entries
+[2026-05-02 06:32:11,799] INFO: AI validation complete: 3/3 successful
+[2026-05-02 06:36:30,616] INFO: Loading 5 sample resumes into database...
+[2026-05-02 06:36:30,843] INFO: Created resume with ID: 5
+[2026-05-02 06:36:30,844] INFO: Loaded: Data Science_sample_1.txt (ID: 5)
+[2026-05-02 06:36:30,848] INFO: Created resume with ID: 6
+[2026-05-02 06:36:30,878] INFO: Loaded: Data Science_sample_2.txt (ID: 6)
+[2026-05-02 06:36:30,883] INFO: Created resume with ID: 7
+[2026-05-02 06:36:30,886] INFO: Loaded: Data Science_sample_3.txt (ID: 7)
+[2026-05-02 06:36:30,891] INFO: Created resume with ID: 8
+[2026-05-02 06:36:30,916] INFO: Loaded: Data Science_sample_4.txt (ID: 8)
+[2026-05-02 06:36:30,922] INFO: Created resume with ID: 9
+[2026-05-02 06:36:30,927] INFO: Loaded: Data Science_sample_5.txt (ID: 9)
+[2026-05-02 06:36:30,929] INFO: Successfully loaded 5 resumes into database
