@@ -49,28 +49,44 @@ def upgrade():
         VALUES ('Default User', 'default@resumetailor.local', now(), now())
     """)
     
-    # 2. Add new columns to resumes table
-    op.add_column('resumes', sa.Column('user_id', sa.Integer(), nullable=True))
-    op.add_column('resumes', sa.Column('upload_date', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True))
-    op.add_column('resumes', sa.Column('tools', postgresql.JSON(astext_type=sa.Text()), server_default='[]', nullable=True))
+    # 2. Add new columns to resumes table (check if they exist first)
+    # Note: tools column already exists in V1, so we skip it
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing_columns = [c['name'] for c in inspector.get_columns('resumes')]
+    
+    if 'user_id' not in existing_columns:
+        op.add_column('resumes', sa.Column('user_id', sa.Integer(), nullable=True))
+    if 'upload_date' not in existing_columns:
+        op.add_column('resumes', sa.Column('upload_date', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True))
+    # tools column already exists in V1, skip it
     
     # Set user_id for existing resumes to default user (id=1)
-    op.execute("UPDATE resumes SET user_id = 1, upload_date = created_at WHERE user_id IS NULL")
+    op.execute("UPDATE resumes SET user_id = 1 WHERE user_id IS NULL")
+    op.execute("UPDATE resumes SET upload_date = created_at WHERE upload_date IS NULL AND created_at IS NOT NULL")
     
     # Make user_id NOT NULL and add foreign key
     op.alter_column('resumes', 'user_id', nullable=False)
     op.create_foreign_key('fk_resumes_user_id', 'resumes', 'users', ['user_id'], ['id'], ondelete='CASCADE')
     op.create_index(op.f('ix_resumes_user_id'), 'resumes', ['user_id'], unique=False)
     
-    # 3. Add new columns to job_descriptions table
-    op.add_column('job_descriptions', sa.Column('user_id', sa.Integer(), nullable=True))
-    op.add_column('job_descriptions', sa.Column('job_url', sa.String(length=1000), nullable=True))
-    op.add_column('job_descriptions', sa.Column('title', sa.String(length=500), nullable=True))
-    op.add_column('job_descriptions', sa.Column('company', sa.String(length=500), nullable=True))
-    op.add_column('job_descriptions', sa.Column('upload_date', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True))
+    # 3. Add new columns to job_descriptions table (check if they exist first)
+    existing_jd_columns = [c['name'] for c in inspector.get_columns('job_descriptions')]
+    
+    if 'user_id' not in existing_jd_columns:
+        op.add_column('job_descriptions', sa.Column('user_id', sa.Integer(), nullable=True))
+    if 'job_url' not in existing_jd_columns:
+        op.add_column('job_descriptions', sa.Column('job_url', sa.String(length=1000), nullable=True))
+    if 'title' not in existing_jd_columns:
+        op.add_column('job_descriptions', sa.Column('title', sa.String(length=500), nullable=True))
+    if 'company' not in existing_jd_columns:
+        op.add_column('job_descriptions', sa.Column('company', sa.String(length=500), nullable=True))
+    if 'upload_date' not in existing_jd_columns:
+        op.add_column('job_descriptions', sa.Column('upload_date', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True))
     
     # Set user_id for existing job_descriptions to default user (id=1)
-    op.execute("UPDATE job_descriptions SET user_id = 1, upload_date = created_at WHERE user_id IS NULL")
+    op.execute("UPDATE job_descriptions SET user_id = 1 WHERE user_id IS NULL")
+    op.execute("UPDATE job_descriptions SET upload_date = created_at WHERE upload_date IS NULL AND created_at IS NOT NULL")
     
     # Make user_id NOT NULL and add foreign key
     op.alter_column('job_descriptions', 'user_id', nullable=False)
@@ -170,10 +186,10 @@ def downgrade():
     op.drop_column('job_descriptions', 'job_url')
     op.drop_column('job_descriptions', 'user_id')
     
-    # Remove new columns from resumes
+    # Remove new columns from resumes (but keep tools as it was in V1)
     op.drop_index(op.f('ix_resumes_user_id'), table_name='resumes')
     op.drop_constraint('fk_resumes_user_id', 'resumes', type_='foreignkey')
-    op.drop_column('resumes', 'tools')
+    # tools column exists in V1, don't drop it
     op.drop_column('resumes', 'upload_date')
     op.drop_column('resumes', 'user_id')
     

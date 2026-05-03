@@ -16,11 +16,13 @@ from sqlalchemy.orm import Session
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from pydantic import BaseModel, HttpUrl, Field
 
 from parsers.resume_parser import parse_resume
 from parsers.jd_parser import parse_jd
 from db import SessionLocal
 import crud
+from job_scraper import fetch_jd_from_url
 from ai_service import get_ai_service
 from ai_models import AIServiceError
 
@@ -84,6 +86,36 @@ def error_response(error_code: str, message: str, details: Any = None) -> Dict[s
         "message": message,
         "details": details
     }
+
+# ===========================
+# V2 Pydantic Models
+# ===========================
+class FetchJDRequest(BaseModel):
+    """Request model for fetching JD from URL"""
+    job_url: str = Field(..., description="URL of the job posting")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "job_url": "https://www.linkedin.com/jobs/view/1234567890/"
+            }
+        }
+
+class FetchJDResponse(BaseModel):
+    """Response model for fetched JD"""
+    title: str
+    company: str
+    raw_text: str
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "title": "Senior Software Engineer",
+                "company": "Google",
+                "raw_text": "We are looking for a Senior Software Engineer..."
+            }
+        }
+
 
 # File validation functions
 def validate_file_size(content: bytes, filename: str) -> None:
@@ -654,5 +686,56 @@ async def ats_score(request: Request, resume_id: int, jd_id: int, db: Session = 
                 "INTERNAL_SERVER_ERROR",
                 "An unexpected error occurred",
                 str(e)  # Include error details in development
+            )
+        )
+
+
+# ===========================
+# V2 API Endpoints
+# ===========================
+
+@app.post("/v2/fetch-jd-from-url/", response_model=FetchJDResponse)
+async def fetch_jd_from_url_endpoint(request: FetchJDRequest):
+    """
+    V2: Fetch job description from a URL.
+    Supports LinkedIn, Naukri, Indeed, Monster, and Glassdoor.
+    
+    - **job_url**: URL of the job posting
+    """
+    try:
+        logger.info(f"Fetching JD from URL: {request.job_url}")
+        
+        # Use the job scraper to fetch JD
+        result = fetch_jd_from_url(request.job_url)
+        
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=error_response(
+                    "SCRAPING_ERROR",
+                    "Failed to fetch job description from the provided URL",
+                    "Unable to extract job information. The URL may be invalid or the site structure may have changed."
+                )
+            )
+        
+        logger.info(f"Successfully fetched JD: {result.get('title', 'Unknown')} at {result.get('company', 'Unknown')}")
+        
+        return FetchJDResponse(
+            title=result.get("title", ""),
+            company=result.get("company", ""),
+            raw_text=result.get("raw_text", "")
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error fetching JD from URL: {str(e)}")
+        logger.exception("Full traceback:")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_response(
+                "INTERNAL_SERVER_ERROR",
+                "An unexpected error occurred while fetching the job description",
+                str(e)
             )
         )
