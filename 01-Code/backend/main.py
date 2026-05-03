@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, status
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, status, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -21,7 +21,6 @@ from pydantic import BaseModel, HttpUrl, Field
 from parsers.resume_parser import parse_resume
 from parsers.jd_parser import parse_jd
 from db import SessionLocal
-import crud
 import crud_v2
 from job_scraper import fetch_jd_from_url
 from ai_service import get_ai_service
@@ -195,7 +194,7 @@ def test_simple():
 async def upload_resume(
     request: Request, 
     file: UploadFile = File(...), 
-    user_email: Optional[str] = None,  # V2: Optional user context
+    user_email: Optional[str] = Form(None),  # V2: Optional user context
     db: Session = Depends(get_db)
 ):
     """
@@ -250,8 +249,10 @@ async def upload_resume(
                 resume = crud_v2.create_resume(db, user_id, file.filename, result)
                 logger.info(f"Resume stored with ID: {resume.id} for user: {user_id}")
             else:
-                # V1 compatibility: Use old CRUD
-                resume = crud.create_resume(db, file.filename, result)
+                # V1 compatibility: Use default user
+                user = crud_v2.get_or_create_default_user(db)
+                user_id = user.id
+                resume = crud_v2.create_resume(db, user.id, file.filename, result)
                 logger.info(f"Resume stored with ID: {resume.id} (V1 mode)")
             
             # Extract skills, experience, and education using AI
@@ -263,17 +264,17 @@ async def upload_resume(
                 # Update database with extracted data
                 if extracted_data.skills:
                     skills_list = [{"name": s.name, "category": s.category, "proficiency": s.proficiency} for s in extracted_data.skills]
-                    crud.update_resume(db, resume.id, {"skills": skills_list})
+                    crud_v2.update_resume(db, resume.id, {"skills": skills_list})
                     logger.info(f"Updated {len(skills_list)} skills for resume {resume.id}")
                 
                 if extracted_data.experience:
                     experience_list = [e.model_dump() for e in extracted_data.experience]
-                    crud.update_resume(db, resume.id, {"experience": experience_list})
+                    crud_v2.update_resume(db, resume.id, {"experience": experience_list})
                     logger.info(f"Updated {len(experience_list)} experience entries for resume {resume.id}")
                 
                 if extracted_data.education:
                     education_list = [e.model_dump() for e in extracted_data.education]
-                    crud.update_resume(db, resume.id, {"education": education_list})
+                    crud_v2.update_resume(db, resume.id, {"education": education_list})
                     logger.info(f"Updated {len(education_list)} education entries for resume {resume.id}")
                 
                 # Return enriched data
@@ -281,16 +282,13 @@ async def upload_resume(
                     "id": resume.id,
                     "filename": resume.filename,
                     "parsed": result,
+                    "user_id": user_id,
                     "extracted": {
                         "skills": skills_list if extracted_data.skills else [],
                         "experience": experience_list if extracted_data.experience else [],
                         "education": education_list if extracted_data.education else []
                     }
                 }
-                
-                # V2: Include user_id if available
-                if user_id:
-                    response["user_id"] = user_id
                     
                 return response
                 
@@ -301,13 +299,10 @@ async def upload_resume(
                     "id": resume.id,
                     "filename": resume.filename,
                     "parsed": result,
+                    "user_id": user_id,
                     "extracted": None,
                     "ai_error": "Skill extraction failed, but resume was saved successfully"
                 }
-                
-                # V2: Include user_id if available
-                if user_id:
-                    response["user_id"] = user_id
                     
                 return response
             
@@ -358,10 +353,10 @@ async def upload_resume(
 async def upload_jd(
     request: Request, 
     file: UploadFile = File(...), 
-    user_email: Optional[str] = None,  # V2: Optional user context
-    job_url: Optional[str] = None,  # V2: Optional job URL
-    title: Optional[str] = None,  # V2: Optional job title
-    company: Optional[str] = None,  # V2: Optional company name
+    user_email: Optional[str] = Form(None),  # V2: Optional user context
+    job_url: Optional[str] = Form(None),  # V2: Optional job URL
+    title: Optional[str] = Form(None),  # V2: Optional job title
+    company: Optional[str] = Form(None),  # V2: Optional company name
     db: Session = Depends(get_db)
 ):
     """
@@ -420,19 +415,21 @@ async def upload_jd(
                                       job_url=job_url, title=title, company=company)
                 logger.info(f"JD stored with ID: {jd.id} for user: {user_id}")
             else:
-                # V1 compatibility: Use old CRUD
-                jd = crud.create_jd(db, file.filename, result)
+                # V1 compatibility: Use default user
+                user = crud_v2.get_or_create_default_user(db)
+                user_id = user.id
+                jd = crud_v2.create_jd(db, user.id, file.filename, result, 
+                                      job_url=job_url, title=title, company=company)
                 logger.info(f"JD stored with ID: {jd.id} (V1 mode)")
             
             response = {
                 "id": jd.id,
                 "filename": jd.filename,
-                "parsed": result
+                "parsed": result,
+                "user_id": user_id
             }
             
             # V2: Include additional fields if available
-            if user_id:
-                response["user_id"] = user_id
             if job_url:
                 response["job_url"] = job_url
             if title:
@@ -491,7 +488,7 @@ def get_resume(resume_id: int, db: Session = Depends(get_db)):
     - **resume_id**: Database ID of the resume
     """
     try:
-        resume = crud.get_resume(db, resume_id)
+        resume = crud_v2.get_resume(db, resume_id)
         if not resume:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -534,7 +531,7 @@ def get_jd(jd_id: int, db: Session = Depends(get_db)):
     - **jd_id**: Database ID of the job description
     """
     try:
-        jd = crud.get_jd(db, jd_id)
+        jd = crud_v2.get_jd(db, jd_id)
         if not jd:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -601,7 +598,7 @@ def gap_analysis(
     """
     try:
         # Retrieve resume and JD from database
-        resume = crud.get_resume(db, resume_id)
+        resume = crud_v2.get_resume(db, resume_id)
         if not resume:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -612,7 +609,7 @@ def gap_analysis(
                 )
             )
         
-        jd = crud.get_jd(db, jd_id)
+        jd = crud_v2.get_jd(db, jd_id)
         if not jd:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -732,7 +729,7 @@ async def ats_score(request: Request, resume_id: int, jd_id: int, db: Session = 
     """
     try:
         # Retrieve resume and JD from database
-        resume = crud.get_resume(db, resume_id)
+        resume = crud_v2.get_resume(db, resume_id)
         if not resume:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -743,7 +740,7 @@ async def ats_score(request: Request, resume_id: int, jd_id: int, db: Session = 
                 )
             )
         
-        jd = crud.get_jd(db, jd_id)
+        jd = crud_v2.get_jd(db, jd_id)
         if not jd:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

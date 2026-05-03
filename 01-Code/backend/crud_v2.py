@@ -104,6 +104,27 @@ def get_resumes_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 1
         logger.error(f"Database error retrieving resumes for user {user_id}: {e}")
         raise
 
+def update_resume(db: Session, resume_id: int, data: Dict[str, Any]) -> Optional[Resume]:
+    """Update resume with new data"""
+    try:
+        resume = get_resume(db, resume_id)
+        if not resume:
+            logger.error(f"Resume {resume_id} not found for update")
+            return None
+        
+        for key, value in data.items():
+            if hasattr(resume, key):
+                setattr(resume, key, value)
+        
+        db.commit()
+        db.refresh(resume)
+        logger.info(f"Updated resume {resume_id} with fields: {list(data.keys())}")
+        return resume
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database error updating resume {resume_id}: {e}")
+        raise
+
 # ============= Job Description CRUD Operations =============
 
 def create_jd(db: Session, user_id: int, filename: Optional[str], parsed: Dict[str, Any],

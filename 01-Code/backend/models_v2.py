@@ -29,6 +29,7 @@ class User(Base):
 class Resume(Base):
     """Resume documents table"""
     __tablename__ = "resumes"
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -49,6 +50,7 @@ class Resume(Base):
 class JobDescription(Base):
     """Job description documents table"""
     __tablename__ = "job_descriptions"
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
