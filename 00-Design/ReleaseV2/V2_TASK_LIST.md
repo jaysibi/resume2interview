@@ -12,11 +12,11 @@
 | Phase | Status | Progress | Estimated Time |
 |-------|--------|----------|----------------|
 | Phase 1: Infrastructure | ✅ Complete | 100% | - |
-| Phase 2: Backend API | 🟡 In Progress | 15% | ~4 hours |
+| Phase 2: Backend API | 🟡 In Progress | 40% | ~2.5 hours remaining |
 | Phase 3: Frontend | ⏳ Not Started | 0% | ~3 hours |
 | Phase 4: Testing | ⏳ Not Started | 0% | ~2 hours |
 | Phase 5: Documentation | 🟡 In Progress | 30% | ~1 hour |
-| **TOTAL** | 🟡 **In Progress** | **29%** | **~10 hours** |
+| **TOTAL** | 🟡 **In Progress** | **34%** | **~8.5 hours** |
 
 ---
 
@@ -75,29 +75,35 @@
 
 ---
 
-## 🚧 Phase 2: Backend API Implementation (IN PROGRESS - 15%)
+## 🚧 Phase 2: Backend API Implementation (IN PROGRESS - 40%)
 
 ### Environment Setup
-- [ ] **2.1** Install new dependencies
-  - [ ] Run: `pip install beautifulsoup4 requests`
-  - [ ] Verify installation
-  - [ ] Test imports in Python REPL
+- [x] **2.1** Install new dependencies
+  - [x] Run: `pip install beautifulsoup4 requests`
+  - [x] Verify installation
+  - [x] Test imports in Python REPL
 
 ### Database Migration Execution
-- [ ] **2.2** Run database migration
-  - [ ] Backup existing database (pg_dump)
-  - [ ] Run: `alembic upgrade head`
-  - [ ] Verify all tables created (users, applications, gap_analyses, ats_scores)
-  - [ ] Verify existing data preserved (resumes, job_descriptions)
-  - [ ] Verify default user created (id=1)
-  - [ ] Test rollback: `alembic downgrade -1` (optional, for testing only)
+- [x] **2.2** Run database migration
+  - [x] Backup existing database (pg_dump)
+  - [x] Run: `alembic upgrade head`
+  - [x] Verify all tables created (users, applications, gap_analyses, ats_scores)
+  - [x] Verify existing data preserved (resumes, job_descriptions)
+  - [x] Verify default user created (id=1)
+  - [x] Fixed migration script to handle existing columns
+  - [x] Test migration successful
 
 ### API Endpoint: Fetch JD from URL
-- [ ] **2.3** Add `/v2/fetch-jd-from-url/` endpoint in `main.py`
-  - [ ] Import `job_scraper` module
-  - [ ] Create Pydantic model: `FetchJDRequest(url: str)`
-  - [ ] Create Pydantic model: `FetchJDResponse(success, title, company, raw_text, job_board, error)`
-  - [ ] Implement POST endpoint with validation
+- [x] **2.3** Add `/v2/fetch-jd-from-url/` endpoint in `main.py`
+  - [x] Import `job_scraper` module
+  - [x] Create Pydantic model: `FetchJDRequest(url: str)`
+  - [x] Create Pydantic model: `FetchJDResponse(title, company, raw_text)`
+  - [x] Implement POST endpoint with validation
+  - [x] Call `fetch_jd_from_url(url)` 
+  - [x] Handle errors (timeout, invalid URL, parsing failure)
+  - [x] Return extracted data
+  - [ ] Add rate limiting (10/minute)
+  - [x] Add logging
   - [ ] Call `fetch_jd_from_url(url)` 
   - [ ] Handle errors (timeout, invalid URL, parsing failure)
   - [ ] Return extracted data
