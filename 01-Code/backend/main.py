@@ -3,7 +3,7 @@ import os
 import shutil
 import tempfile
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -22,6 +22,7 @@ from parsers.resume_parser import parse_resume
 from parsers.jd_parser import parse_jd
 from db import SessionLocal
 import crud
+import crud_v2
 from job_scraper import fetch_jd_from_url
 from ai_service import get_ai_service
 from ai_models import AIServiceError
@@ -191,12 +192,20 @@ def test_simple():
 
 @app.post("/upload-resume/")
 # @limiter.limit("10/minute")  # Temporarily disabled for debugging
-async def upload_resume(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_resume(
+    request: Request, 
+    file: UploadFile = File(...), 
+    user_email: Optional[str] = None,  # V2: Optional user context
+    db: Session = Depends(get_db)
+):
     """
     Upload and parse a resume file (PDF or DOCX).
     Returns parsed resume data with database ID.
     
+    V2: Supports optional user_email parameter for user-centric tracking.
+    
     - **file**: Resume file (PDF or DOCX, max 10 MB)
+    - **user_email**: (Optional) User email for V2 multi-user support
     """
     try:
         # Validate filename
@@ -228,9 +237,22 @@ async def upload_resume(request: Request, file: UploadFile = File(...), db: Sess
             logger.info(f"Parsing resume: {file.filename}")
             result = parse_resume(temp_path, ext)
             
-            # Store in database
-            resume = crud.create_resume(db, file.filename, result)
-            logger.info(f"Resume stored with ID: {resume.id}")
+            # V2: Get or create user if user_email provided
+            user_id = None
+            if user_email:
+                user = crud_v2.get_user_by_email(db, user_email)
+                if not user:
+                    user = crud_v2.get_or_create_default_user(db)
+                    logger.info(f"Using default user for resume upload (email not found: {user_email})")
+                user_id = user.id
+                
+                # Store in database using V2 CRUD
+                resume = crud_v2.create_resume(db, user_id, file.filename, result)
+                logger.info(f"Resume stored with ID: {resume.id} for user: {user_id}")
+            else:
+                # V1 compatibility: Use old CRUD
+                resume = crud.create_resume(db, file.filename, result)
+                logger.info(f"Resume stored with ID: {resume.id} (V1 mode)")
             
             # Extract skills, experience, and education using AI
             try:
@@ -255,7 +277,7 @@ async def upload_resume(request: Request, file: UploadFile = File(...), db: Sess
                     logger.info(f"Updated {len(education_list)} education entries for resume {resume.id}")
                 
                 # Return enriched data
-                return {
+                response = {
                     "id": resume.id,
                     "filename": resume.filename,
                     "parsed": result,
@@ -266,16 +288,28 @@ async def upload_resume(request: Request, file: UploadFile = File(...), db: Sess
                     }
                 }
                 
+                # V2: Include user_id if available
+                if user_id:
+                    response["user_id"] = user_id
+                    
+                return response
+                
             except AIServiceError as e:
                 # AI extraction failed - still return resume but log error
                 logger.error(f"AI extraction failed for resume {resume.id}: {str(e)}")
-                return {
+                response = {
                     "id": resume.id,
                     "filename": resume.filename,
                     "parsed": result,
                     "extracted": None,
                     "ai_error": "Skill extraction failed, but resume was saved successfully"
                 }
+                
+                # V2: Include user_id if available
+                if user_id:
+                    response["user_id"] = user_id
+                    
+                return response
             
         except ValueError as e:
             # Parsing errors
@@ -321,12 +355,26 @@ async def upload_resume(request: Request, file: UploadFile = File(...), db: Sess
 
 @app.post("/upload-jd/")
 # @limiter.limit("10/minute")  # Temporarily disabled for debugging
-async def upload_jd(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_jd(
+    request: Request, 
+    file: UploadFile = File(...), 
+    user_email: Optional[str] = None,  # V2: Optional user context
+    job_url: Optional[str] = None,  # V2: Optional job URL
+    title: Optional[str] = None,  # V2: Optional job title
+    company: Optional[str] = None,  # V2: Optional company name
+    db: Session = Depends(get_db)
+):
     """
     Upload and parse a job description file (PDF or DOCX).
     Returns parsed JD data with database ID.
     
+    V2: Supports optional user_email, job_url, title, and company parameters.
+    
     - **file**: Job description file (PDF or DOCX, max 10 MB)
+    - **user_email**: (Optional) User email for V2 multi-user support
+    - **job_url**: (Optional) URL of the job posting
+    - **title**: (Optional) Job title
+    - **company**: (Optional) Company name
     """
     try:
         # Validate filename
@@ -358,15 +406,41 @@ async def upload_jd(request: Request, file: UploadFile = File(...), db: Session 
             logger.info(f"Parsing JD: {file.filename}")
             result = parse_jd(temp_path, ext)
             
-            # Store in database
-            jd = crud.create_jd(db, file.filename, result)
-            logger.info(f"JD stored with ID: {jd.id}")
+            # V2: Get or create user if user_email provided
+            user_id = None
+            if user_email:
+                user = crud_v2.get_user_by_email(db, user_email)
+                if not user:
+                    user = crud_v2.get_or_create_default_user(db)
+                    logger.info(f"Using default user for JD upload (email not found: {user_email})")
+                user_id = user.id
+                
+                # Store in database using V2 CRUD
+                jd = crud_v2.create_jd(db, user_id, file.filename, result, 
+                                      job_url=job_url, title=title, company=company)
+                logger.info(f"JD stored with ID: {jd.id} for user: {user_id}")
+            else:
+                # V1 compatibility: Use old CRUD
+                jd = crud.create_jd(db, file.filename, result)
+                logger.info(f"JD stored with ID: {jd.id} (V1 mode)")
             
-            return {
+            response = {
                 "id": jd.id,
                 "filename": jd.filename,
                 "parsed": result
             }
+            
+            # V2: Include additional fields if available
+            if user_id:
+                response["user_id"] = user_id
+            if job_url:
+                response["job_url"] = job_url
+            if title:
+                response["title"] = title
+            if company:
+                response["company"] = company
+                
+            return response
             
         except ValueError as e:
             # Parsing errors
@@ -507,13 +581,23 @@ def gap_analysis_test(resume_id: int, jd_id: int):
 
 
 @app.post("/gap-analysis/")
-def gap_analysis(resume_id: int, jd_id: int, db: Session = Depends(get_db)):
+def gap_analysis(
+    resume_id: int, 
+    jd_id: int, 
+    user_email: Optional[str] = None,  # V2: Optional user context
+    create_application: bool = False,  # V2: Create application record
+    db: Session = Depends(get_db)
+):
     """
     Analyze gaps between a resume and job description.
     Identifies missing skills, strengths, weaknesses, and provides recommendations.
     
+    V2: Optionally creates an Application record and stores results for tracking.
+    
     - **resume_id**: Database ID of the resume
     - **jd_id**: Database ID of the job description
+    - **user_email**: (Optional) User email for V2 multi-user support
+    - **create_application**: (Optional) Create application record and store results (V2)
     """
     try:
         # Retrieve resume and JD from database
@@ -539,6 +623,26 @@ def gap_analysis(resume_id: int, jd_id: int, db: Session = Depends(get_db)):
                 )
             )
         
+        # V2: Get or create user if create_application is True
+        application_id = None
+        if create_application:
+            user = None
+            if user_email:
+                user = crud_v2.get_user_by_email(db, user_email)
+            if not user:
+                user = crud_v2.get_or_create_default_user(db)
+                
+            # Create application record
+            application = crud_v2.create_application(
+                db, 
+                user_id=user.id, 
+                resume_id=resume_id, 
+                jd_id=jd_id,
+                status="analyzed"
+            )
+            application_id = application.id
+            logger.info(f"Created application {application_id} for user {user.id}")
+        
         # Prepare data for AI analysis
         resume_skills = resume.skills if resume.skills else []
         resume_experience = resume.raw_text[:1500]  # Truncated summary
@@ -558,7 +662,20 @@ def gap_analysis(resume_id: int, jd_id: int, db: Session = Depends(get_db)):
             
             logger.info(f"Gap analysis complete: Match score {analysis.match_score}%")
             
-            return {
+            # V2: Store gap analysis if application was created
+            if application_id:
+                gap_analysis_data = {
+                    "match_score": analysis.match_score,
+                    "missing_required_skills": analysis.missing_required_skills,
+                    "missing_preferred_skills": analysis.missing_preferred_skills,
+                    "strengths": analysis.strengths,
+                    "weak_areas": analysis.weak_areas,
+                    "recommendations": analysis.recommendations
+                }
+                crud_v2.create_gap_analysis(db, application_id, gap_analysis_data)
+                logger.info(f"Stored gap analysis for application {application_id}")
+            
+            response = {
                 "resume_id": resume_id,
                 "jd_id": jd_id,
                 "analysis": {
@@ -570,6 +687,12 @@ def gap_analysis(resume_id: int, jd_id: int, db: Session = Depends(get_db)):
                     "recommendations": analysis.recommendations
                 }
             }
+            
+            # V2: Include application_id if created
+            if application_id:
+                response["application_id"] = application_id
+                
+            return response
             
         except AIServiceError as e:
             logger.error(f"AI gap analysis failed: {str(e)}")
@@ -736,6 +859,176 @@ async def fetch_jd_from_url_endpoint(request: FetchJDRequest):
             detail=error_response(
                 "INTERNAL_SERVER_ERROR",
                 "An unexpected error occurred while fetching the job description",
+                str(e)
+            )
+        )
+
+
+@app.get("/v2/applications/")
+async def get_applications(
+    user_email: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """
+    V2: Get list of applications for a user.
+    Returns paginated list of applications with resume and JD details.
+    
+    - **user_email**: (Optional) User email, defaults to default user
+    - **skip**: Pagination offset (default: 0)
+    - **limit**: Pagination limit (default: 100)
+    """
+    try:
+        # Get or create user
+        if user_email:
+            user = crud_v2.get_user_by_email(db, user_email)
+        else:
+            user = crud_v2.get_or_create_default_user(db)
+            
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_response("NOT_FOUND", f"User with email {user_email} not found", None)
+            )
+        
+        # Get applications for user
+        applications = crud_v2.get_applications_by_user(db, user.id, skip=skip, limit=limit)
+        
+        # Format response
+        result = []
+        for app in applications:
+            # Get resume and JD details
+            resume = crud_v2.get_resume(db, app.resume_id)
+            jd = crud_v2.get_jd(db, app.jd_id)
+            
+            result.append({
+                "application_id": app.id,
+                "resume_id": app.resume_id,
+                "resume_filename": resume.filename if resume else "Unknown",
+                "jd_id": app.jd_id,
+                "jd_title": jd.title if jd and jd.title else (jd.filename if jd else "Unknown"),
+                "jd_company": jd.company if jd and jd.company else "Unknown",
+                "applied_at": app.applied_at.isoformat() if app.applied_at else None,
+                "status": app.status,
+                "notes": app.notes
+            })
+        
+        return {
+            "user_id": user.id,
+            "user_email": user.email,
+            "total": len(result),
+            "skip": skip,
+            "limit": limit,
+            "applications": result
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error getting applications: {str(e)}")
+        logger.exception("Full traceback:")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_response(
+                "INTERNAL_SERVER_ERROR",
+                "An unexpected error occurred",
+                str(e)
+            )
+        )
+
+
+@app.get("/v2/applications/{application_id}/")
+async def get_application_details(
+    application_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    V2: Get detailed information about a specific application.
+    Includes resume, JD, gap analysis, and ATS score if available.
+    
+    - **application_id**: Database ID of the application
+    """
+    try:
+        # Get application
+        application = crud_v2.get_application(db, application_id)
+        if not application:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_response("NOT_FOUND", f"Application with ID {application_id} not found", None)
+            )
+        
+        # Get resume and JD
+        resume = crud_v2.get_resume(db, application.resume_id)
+        jd = crud_v2.get_jd(db, application.jd_id)
+        
+        # Get gap analysis if exists
+        gap_analysis = crud_v2.get_gap_analysis_by_application(db, application_id)
+        
+        # Get ATS score if exists
+        ats_score = crud_v2.get_ats_score_by_application(db, application_id)
+        
+        # Format response
+        response = {
+            "application": {
+                "id": application.id,
+                "user_id": application.user_id,
+                "status": application.status,
+                "applied_at": application.applied_at.isoformat() if application.applied_at else None,
+                "notes": application.notes
+            },
+            "resume": {
+                "id": resume.id if resume else None,
+                "filename": resume.filename if resume else None,
+                "skills": resume.skills if resume else [],
+                "experience": resume.experience if resume else [],
+                "education": resume.education if resume else [],
+                "upload_date": resume.upload_date.isoformat() if resume and resume.upload_date else None
+            } if resume else None,
+            "job_description": {
+                "id": jd.id if jd else None,
+                "filename": jd.filename if jd else None,
+                "title": jd.title if jd else None,
+                "company": jd.company if jd else None,
+                "job_url": jd.job_url if jd else None,
+                "mandatory_skills": jd.mandatory_skills if jd else [],
+                "preferred_skills": jd.preferred_skills if jd else [],
+                "keywords": jd.keywords if jd else [],
+                "upload_date": jd.upload_date.isoformat() if jd and jd.upload_date else None
+            } if jd else None,
+            "gap_analysis": {
+                "match_score": gap_analysis.match_score,
+                "missing_required_skills": gap_analysis.missing_required_skills,
+                "missing_preferred_skills": gap_analysis.missing_preferred_skills,
+                "strengths": gap_analysis.strengths,
+                "weak_areas": gap_analysis.weak_areas,
+                "recommendations": gap_analysis.recommendations,
+                "created_at": gap_analysis.created_at.isoformat() if gap_analysis.created_at else None
+            } if gap_analysis else None,
+            "ats_score": {
+                "ats_score": ats_score.ats_score,
+                "keyword_match_percentage": ats_score.keyword_match_percentage,
+                "format_score": ats_score.format_score,
+                "matched_keywords": ats_score.matched_keywords,
+                "missing_keywords": ats_score.missing_keywords,
+                "issues": ats_score.issues,
+                "recommendations": ats_score.recommendations,
+                "created_at": ats_score.created_at.isoformat() if ats_score.created_at else None
+            } if ats_score else None
+        }
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error getting application details: {str(e)}")
+        logger.exception("Full traceback:")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_response(
+                "INTERNAL_SERVER_ERROR",
+                "An unexpected error occurred",
                 str(e)
             )
         )
