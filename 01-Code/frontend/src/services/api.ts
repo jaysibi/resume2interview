@@ -7,6 +7,7 @@ export interface Resume {
   filename: string;
   raw_text: string;
   upload_date: string;
+  user_id?: number; // V2: Optional user context
 }
 
 export interface JobDescription {
@@ -14,6 +15,10 @@ export interface JobDescription {
   filename: string;
   raw_text: string;
   upload_date: string;
+  user_id?: number; // V2: Optional user context
+  job_url?: string; // V2: Job posting URL
+  title?: string; // V2: Job title
+  company?: string; // V2: Company name
 }
 
 export interface GapAnalysisResponse {
@@ -23,6 +28,7 @@ export interface GapAnalysisResponse {
   missing_skills: string[];
   recommendations: string[];
   analysis_timestamp: string;
+  application_id?: number; // V2: Optional application tracking
 }
 
 export interface ATSScoreResponse {
@@ -34,6 +40,77 @@ export interface ATSScoreResponse {
   overall_feedback: string;
   missing_keywords: string[];
   analysis_timestamp: string;
+}
+
+// V2 Types
+export interface FetchJDRequest {
+  job_url: string;
+}
+
+export interface FetchJDResponse {
+  title: string;
+  company: string;
+  raw_text: string;
+}
+
+export interface Application {
+  application_id: number;
+  resume_id: number;
+  resume_filename: string;
+  jd_id: number;
+  jd_title: string;
+  jd_company: string;
+  applied_at: string;
+  status: string;
+  notes?: string;
+}
+
+export interface ApplicationDetail {
+  application: {
+    id: number;
+    user_id: number;
+    status: string;
+    applied_at: string;
+    notes?: string;
+  };
+  resume: {
+    id: number;
+    filename: string;
+    skills: any[];
+    experience: any[];
+    education: any[];
+    upload_date: string;
+  } | null;
+  job_description: {
+    id: number;
+    filename?: string;
+    title?: string;
+    company?: string;
+    job_url?: string;
+    mandatory_skills: any[];
+    preferred_skills: any[];
+    keywords: any[];
+    upload_date: string;
+  } | null;
+  gap_analysis: {
+    match_score: number;
+    missing_required_skills: string[];
+    missing_preferred_skills: string[];
+    strengths: string[];
+    weak_areas: string[];
+    recommendations: string[];
+    created_at: string;
+  } | null;
+  ats_score: {
+    ats_score: number;
+    keyword_match_percentage: number;
+    format_score: number;
+    matched_keywords: string[];
+    missing_keywords: string[];
+    issues: any[];
+    recommendations: string[];
+    created_at: string;
+  } | null;
 }
 
 // API Error class
@@ -105,10 +182,15 @@ export const api = {
   },
 
   // Resume Endpoints
-  async uploadResume(file: File): Promise<Resume> {
+  async uploadResume(file: File, userEmail?: string): Promise<Resume> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('filename', file.name);
+    
+    // V2: Add optional user_email parameter
+    if (userEmail) {
+      formData.append('user_email', userEmail);
+    }
 
     return apiRequest('/upload-resume/', {
       method: 'POST',
@@ -125,10 +207,30 @@ export const api = {
   },
 
   // Job Description Endpoints
-  async uploadJobDescription(file: File): Promise<JobDescription> {
+  async uploadJobDescription(
+    file: File, 
+    userEmail?: string, 
+    jobUrl?: string, 
+    title?: string, 
+    company?: string
+  ): Promise<JobDescription> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('filename', file.name);
+    
+    // V2: Add optional parameters
+    if (userEmail) {
+      formData.append('user_email', userEmail);
+    }
+    if (jobUrl) {
+      formData.append('job_url', jobUrl);
+    }
+    if (title) {
+      formData.append('title', title);
+    }
+    if (company) {
+      formData.append('company', company);
+    }
 
     return apiRequest('/upload-jd/', {
       method: 'POST',
@@ -147,13 +249,30 @@ export const api = {
   // Analysis Endpoints
   async getGapAnalysis(
     resumeId: number,
-    jdId: number
+    jdId: number,
+    userEmail?: string,
+    createApplication: boolean = false
   ): Promise<GapAnalysisResponse> {
-    // Backend returns nested structure: {resume_id, jd_id, analysis: {...}}
+    // Build query parameters
+    const params = new URLSearchParams({ 
+      resume_id: resumeId.toString(), 
+      jd_id: jdId.toString() 
+    });
+    
+    // V2: Add optional parameters
+    if (userEmail) {
+      params.append('user_email', userEmail);
+    }
+    if (createApplication) {
+      params.append('create_application', 'true');
+    }
+    
+    // Backend returns nested structure: {resume_id, jd_id, analysis: {...}, application_id?: number}
     // We need to flatten it for the frontend
     const response = await apiRequest<{
       resume_id: number;
       jd_id: number;
+      application_id?: number; // V2: Optional application tracking
       analysis: {
         match_score: number;
         missing_required_skills: string[];
@@ -162,7 +281,7 @@ export const api = {
         weak_areas: string[];
         recommendations: string[];
       };
-    }>(`/gap-analysis/?resume_id=${resumeId}&jd_id=${jdId}`, {
+    }>(`/gap-analysis/?${params.toString()}`, {
       method: 'POST',
     });
     
@@ -177,6 +296,7 @@ export const api = {
       ],
       recommendations: response.analysis.recommendations,
       analysis_timestamp: new Date().toISOString(),
+      application_id: response.application_id, // V2: Include application ID if created
     };
   },
 
@@ -228,6 +348,51 @@ export const api = {
       missing_keywords: response.scoring.missing_keywords,
       analysis_timestamp: new Date().toISOString(),
     };
+  },
+
+  // ===========================
+  // V2 API Endpoints
+  // ===========================
+
+  // Fetch JD from URL (V2 only)
+  async fetchJdFromUrl(jobUrl: string): Promise<FetchJDResponse> {
+    return apiRequest('/v2/fetch-jd-from-url/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ job_url: jobUrl }),
+    });
+  },
+
+  // Get list of applications for a user (V2 only)
+  async getApplications(
+    userEmail?: string,
+    skip: number = 0,
+    limit: number = 100
+  ): Promise<{
+    user_id: number;
+    user_email: string;
+    total: number;
+    skip: number;
+    limit: number;
+    applications: Application[];
+  }> {
+    const params = new URLSearchParams({ 
+      skip: skip.toString(), 
+      limit: limit.toString() 
+    });
+    
+    if (userEmail) {
+      params.append('user_email', userEmail);
+    }
+    
+    return apiRequest(`/v2/applications/?${params.toString()}`);
+  },
+
+  // Get detailed information about a specific application (V2 only)
+  async getApplicationDetails(applicationId: number): Promise<ApplicationDetail> {
+    return apiRequest(`/v2/applications/${applicationId}/`);
   },
 };
 

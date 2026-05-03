@@ -8,6 +8,14 @@ export default function UploadPage() {
   
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [jdFile, setJDFile] = useState<File | null>(null);
+  
+  // V2: Job URL fetch mode
+  const [useJobUrl, setUseJobUrl] = useState(false);
+  const [jobUrl, setJobUrl] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
+  const [company, setCompany] = useState('');
+  const [fetchingJd, setFetchingJd] = useState(false);
+  
   const [resumeProgress, setResumeProgress] = useState<UploadProgress>({
     progress: 0,
     status: 'idle',
@@ -76,7 +84,14 @@ export default function UploadPage() {
 
     try {
       setJDProgress({ progress: 50, status: 'uploading' });
-      const response = await api.uploadJobDescription(jdFile);
+      // V2: Pass job URL, title, and company if available
+      const response = await api.uploadJobDescription(
+        jdFile, 
+        undefined, // userEmail
+        jobUrl || undefined, 
+        jobTitle || undefined, 
+        company || undefined
+      );
       setJDId(response.id);
       setJDProgress({ 
         progress: 100, 
@@ -100,6 +115,57 @@ export default function UploadPage() {
         status: 'error',
         message: errorMessage,
       });
+    }
+  };
+
+  // V2: Fetch JD from URL
+  const fetchJDFromUrl = async () => {
+    if (!jobUrl) return;
+
+    try {
+      setFetchingJd(true);
+      setJDProgress({ progress: 50, status: 'uploading' });
+      
+      // Fetch JD content from URL
+      const jdData = await api.fetchJdFromUrl(jobUrl);
+      
+      // Create a text file from the fetched data
+      const jdText = jdData.raw_text;
+      const blob = new Blob([jdText], { type: 'text/plain' });
+      const file = new File([blob], `${jdData.title || 'job'}.txt`, { type: 'text/plain' });
+      
+      // Upload the JD with metadata
+      const response = await api.uploadJobDescription(
+        file,
+        undefined, // userEmail
+        jobUrl,
+        jdData.title || jobTitle,
+        jdData.company || company
+      );
+      
+      setJDId(response.id);
+      setJobTitle(jdData.title || jobTitle);
+      setCompany(jdData.company || company);
+      setJDProgress({ 
+        progress: 100, 
+        status: 'success',
+        message: `Job description fetched and uploaded successfully (ID: ${response.id})` 
+      });
+    } catch (error) {
+      console.error('JD fetch error:', error);
+      let errorMessage = 'Failed to fetch job description from URL';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      setJDProgress({
+        progress: 0,
+        status: 'error',
+        message: errorMessage,
+      });
+    } finally {
+      setFetchingJd(false);
     }
   };
 
@@ -198,44 +264,160 @@ export default function UploadPage() {
           {/* Job Description Upload */}
           <div className="card">
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              Job Description Upload
+              Job Description
             </h2>
             
-            <div className="mb-4">
-              <label 
-                htmlFor="jd-upload"
-                className="flex flex-col items-center justify-center w-full h-48 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
+            {/* V2: Toggle between file upload and URL fetch */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => {
+                  setUseJobUrl(false);
+                  setJDProgress({ progress: 0, status: 'idle' });
+                }}
+                className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                  !useJobUrl
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
-                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <svg className="w-12 h-12 mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <p className="mb-2 text-sm text-gray-500">
-                    <span className="font-semibold">Click to upload</span> or drag and drop
-                  </p>
-                  <p className="text-xs text-gray-500">PDF, DOCX, or TXT</p>
-                </div>
-                <input
-                  id="jd-upload"
-                  type="file"
-                  className="hidden"
-                  accept=".pdf,.docx,.txt"
-                  onChange={handleJDChange}
-                />
-              </label>
+                Upload File
+              </button>
+              <button
+                onClick={() => {
+                  setUseJobUrl(true);
+                  setJDProgress({ progress: 0, status: 'idle' });
+                }}
+                className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                  useJobUrl
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Fetch from URL
+              </button>
             </div>
 
-            {jdFile && (
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">
-                  Selected: <span className="font-medium">{jdFile.name}</span>
-                </p>
+            {!useJobUrl ? (
+              // File upload mode
+              <>
+                <div className="mb-4">
+                  <label 
+                    htmlFor="jd-upload"
+                    className="flex flex-col items-center justify-center w-full h-48 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <svg className="w-12 h-12 mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <p className="mb-2 text-sm text-gray-500">
+                        <span className="font-semibold">Click to upload</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-gray-500">PDF, DOCX, or TXT</p>
+                    </div>
+                    <input
+                      id="jd-upload"
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.docx,.txt"
+                      onChange={handleJDChange}
+                    />
+                  </label>
+                </div>
+
+                {jdFile && (
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600 mb-2">
+                      Selected: <span className="font-medium">{jdFile.name}</span>
+                    </p>
+                    
+                    {/* Optional metadata fields */}
+                    <div className="space-y-2 mb-4">
+                      <input
+                        type="text"
+                        placeholder="Job URL (optional)"
+                        value={jobUrl}
+                        onChange={(e) => setJobUrl(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Job Title (optional)"
+                        value={jobTitle}
+                        onChange={(e) => setJobTitle(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Company (optional)"
+                        value={company}
+                        onChange={(e) => setCompany(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                    
+                    {jdProgress.status === 'idle' && (
+                      <button 
+                        onClick={uploadJD}
+                        className="btn-primary w-full"
+                      >
+                        Upload Job Description
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              // URL fetch mode (V2)
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Job Posting URL *
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://www.linkedin.com/jobs/view/..."
+                    value={jobUrl}
+                    onChange={(e) => setJobUrl(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Supports: LinkedIn, Naukri, Indeed, Monster, Glassdoor
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Job Title (optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Senior Software Engineer"
+                    value={jobTitle}
+                    onChange={(e) => setJobTitle(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Company (optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Google"
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+
                 {jdProgress.status === 'idle' && (
                   <button 
-                    onClick={uploadJD}
-                    className="btn-primary w-full"
+                    onClick={fetchJDFromUrl}
+                    disabled={!jobUrl || fetchingJd}
+                    className="btn-primary w-full disabled:bg-gray-300 disabled:cursor-not-allowed"
                   >
-                    Upload Job Description
+                    {fetchingJd ? 'Fetching...' : 'Fetch Job Description'}
                   </button>
                 )}
               </div>
