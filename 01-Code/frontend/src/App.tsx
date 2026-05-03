@@ -2,6 +2,8 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import UploadPage from './pages/UploadPage';
 import ResultsPage from './pages/ResultsPage';
+import ApplicationsPage from './pages/ApplicationsPage';
+import ApplicationDetailPage from './pages/ApplicationDetailPage';
 
 function App() {
   return (
@@ -10,6 +12,8 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/results" element={<ResultsPage />} />
+        <Route path="/applications" element={<ApplicationsPage />} />
+        <Route path="/applications/:id" element={<ApplicationDetailPage />} />
       </Routes>
     </Router>
   );
