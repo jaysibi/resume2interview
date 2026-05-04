@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Layout from '../components/Layout';
 import api from '../services/api';
 import type { UploadProgress } from '../types';
 
@@ -9,12 +10,14 @@ export default function UploadPage() {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [jdFile, setJDFile] = useState<File | null>(null);
   
-  // V2: Job URL fetch mode
-  const [useJobUrl, setUseJobUrl] = useState(false);
+  // JD input mode: 'file' or 'text'
+  const [jdInputMode, setJdInputMode] = useState<'file' | 'text'>('text');
+  const [jdText, setJdText] = useState('');
+  
+  // Optional metadata fields
   const [jobUrl, setJobUrl] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [company, setCompany] = useState('');
-  const [fetchingJd, setFetchingJd] = useState(false);
   
   const [resumeProgress, setResumeProgress] = useState<UploadProgress>({
     progress: 0,
@@ -24,8 +27,8 @@ export default function UploadPage() {
     progress: 0,
     status: 'idle',
   });
-  const [resumeId, setResumeId] = useState<number | null>(null);
-  const [jdId, setJDId] = useState<number | null>(null);
+  const [resumeId, setResumeId] = useState<string | null>(null);
+  const [jdId, setJDId] = useState<string | null>(null);
 
   // Handle resume file selection
   const handleResumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,7 +59,7 @@ export default function UploadPage() {
       setResumeProgress({ 
         progress: 100, 
         status: 'success',
-        message: `Resume uploaded successfully (ID: ${response.id})` 
+        message: 'Resume uploaded successfully' 
       });
     } catch (error) {
       console.error('Resume upload error:', error);
@@ -78,7 +81,7 @@ export default function UploadPage() {
     }
   };
 
-  // Upload job description
+  // Upload job description from file
   const uploadJD = async () => {
     if (!jdFile) return;
 
@@ -96,7 +99,7 @@ export default function UploadPage() {
       setJDProgress({ 
         progress: 100, 
         status: 'success',
-        message: `Job description uploaded successfully (ID: ${response.id})` 
+        message: 'Job description uploaded successfully' 
       });
     } catch (error) {
       console.error('JD upload error:', error);
@@ -118,45 +121,43 @@ export default function UploadPage() {
     }
   };
 
-  // V2: Fetch JD from URL
-  const fetchJDFromUrl = async () => {
-    if (!jobUrl) return;
+  // Upload job description from pasted text
+  const uploadJDFromText = async () => {
+    if (!jdText.trim()) return;
 
     try {
-      setFetchingJd(true);
       setJDProgress({ progress: 50, status: 'uploading' });
       
-      // Fetch JD content from URL
-      const jdData = await api.fetchJdFromUrl(jobUrl);
-      
-      // Create a text file from the fetched data
-      const jdText = jdData.raw_text;
+      // Create a text file from the pasted content
+      const filename = jobTitle ? `${jobTitle}.txt` : 'job_description.txt';
       const blob = new Blob([jdText], { type: 'text/plain' });
-      const file = new File([blob], `${jdData.title || 'job'}.txt`, { type: 'text/plain' });
+      const file = new File([blob], filename, { type: 'text/plain' });
       
       // Upload the JD with metadata
       const response = await api.uploadJobDescription(
         file,
         undefined, // userEmail
-        jobUrl,
-        jdData.title || jobTitle,
-        jdData.company || company
+        jobUrl || undefined,
+        jobTitle || undefined,
+        company || undefined
       );
       
       setJDId(response.id);
-      setJobTitle(jdData.title || jobTitle);
-      setCompany(jdData.company || company);
       setJDProgress({ 
         progress: 100, 
         status: 'success',
-        message: `Job description fetched and uploaded successfully (ID: ${response.id})` 
+        message: 'Job description uploaded successfully' 
       });
     } catch (error) {
-      console.error('JD fetch error:', error);
-      let errorMessage = 'Failed to fetch job description from URL';
+      console.error('JD upload error:', error);
+      let errorMessage = 'Upload failed';
       
       if (error instanceof Error) {
         errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error && typeof error === 'object') {
+        errorMessage = JSON.stringify(error);
       }
       
       setJDProgress({
@@ -164,10 +165,10 @@ export default function UploadPage() {
         status: 'error',
         message: errorMessage,
       });
-    } finally {
-      setFetchingJd(false);
     }
   };
+
+
 
   // Analyze both
   const handleAnalyze = () => {
@@ -179,19 +180,20 @@ export default function UploadPage() {
   const canAnalyze = resumeProgress.status === 'success' && jdProgress.status === 'success';
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="container mx-auto px-4 max-w-4xl">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Upload Your Documents
-          </h1>
-          <p className="text-lg text-gray-600">
-            Upload your resume and the job description to get started
-          </p>
-        </div>
+    <Layout>
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="container mx-auto px-4 max-w-4xl">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Upload Your Documents
+            </h1>
+            <p className="text-lg text-gray-600">
+              Upload your resume and the job description to get started
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Resume Upload */}
           <div className="card">
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
@@ -267,15 +269,15 @@ export default function UploadPage() {
               Job Description
             </h2>
             
-            {/* V2: Toggle between file upload and URL fetch */}
+            {/* Toggle between file upload and text paste */}
             <div className="flex gap-2 mb-4">
               <button
                 onClick={() => {
-                  setUseJobUrl(false);
+                  setJdInputMode('file');
                   setJDProgress({ progress: 0, status: 'idle' });
                 }}
                 className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                  !useJobUrl
+                  jdInputMode === 'file'
                     ? 'bg-primary-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
@@ -284,20 +286,20 @@ export default function UploadPage() {
               </button>
               <button
                 onClick={() => {
-                  setUseJobUrl(true);
+                  setJdInputMode('text');
                   setJDProgress({ progress: 0, status: 'idle' });
                 }}
                 className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                  useJobUrl
+                  jdInputMode === 'text'
                     ? 'bg-primary-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                Fetch from URL
+                Paste Text
               </button>
             </div>
 
-            {!useJobUrl ? (
+            {jdInputMode === 'file' ? (
               // File upload mode
               <>
                 <div className="mb-4">
@@ -367,60 +369,80 @@ export default function UploadPage() {
                 )}
               </>
             ) : (
-              // URL fetch mode (V2)
-              <div className="space-y-4">
-                <div>
+              // Text paste mode
+              <>
+                <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Job Posting URL *
+                    Job Description Text
                   </label>
-                  <input
-                    type="url"
-                    placeholder="https://www.linkedin.com/jobs/view/..."
-                    value={jobUrl}
-                    onChange={(e) => setJobUrl(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  <textarea
+                    value={jdText}
+                    onChange={(e) => setJdText(e.target.value)}
+                    placeholder="Paste the job description text here...
+
+Example:
+Job Title: Senior Software Engineer
+Company: Tech Corp
+Location: Remote
+
+Responsibilities:
+- Design and develop scalable applications
+- Lead technical discussions
+- Mentor junior developers
+
+Requirements:
+- 5+ years of experience with Python/Java
+- Strong understanding of cloud platforms (AWS/Azure)
+- Excellent communication skills"
+                    className="w-full h-64 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Supports: LinkedIn, Naukri, Indeed, Monster, Glassdoor
+                  <p className="text-xs text-gray-500 mt-2">
+                    Copy the job description from any job board and paste it here
                   </p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Job Title (optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Senior Software Engineer"
-                    value={jobTitle}
-                    onChange={(e) => setJobTitle(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Company (optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Google"
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-
-                {jdProgress.status === 'idle' && (
-                  <button 
-                    onClick={fetchJDFromUrl}
-                    disabled={!jobUrl || fetchingJd}
-                    className="btn-primary w-full disabled:bg-gray-300 disabled:cursor-not-allowed"
-                  >
-                    {fetchingJd ? 'Fetching...' : 'Fetch Job Description'}
-                  </button>
+                {jdText.trim() && (
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600 mb-2">
+                      Characters: <span className="font-medium">{jdText.length}</span>
+                    </p>
+                    
+                    {/* Optional metadata fields */}
+                    <div className="space-y-2 mb-4">
+                      <input
+                        type="text"
+                        placeholder="Job URL (optional)"
+                        value={jobUrl}
+                        onChange={(e) => setJobUrl(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Job Title (optional)"
+                        value={jobTitle}
+                        onChange={(e) => setJobTitle(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Company (optional)"
+                        value={company}
+                        onChange={(e) => setCompany(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                    
+                    {jdProgress.status === 'idle' && (
+                      <button 
+                        onClick={uploadJDFromText}
+                        className="btn-primary w-full"
+                      >
+                        Upload Job Description
+                      </button>
+                    )}
+                  </div>
                 )}
-              </div>
+              </>
             )}
 
             {/* Progress/Status */}
@@ -468,5 +490,6 @@ export default function UploadPage() {
         </div>
       </div>
     </div>
+    </Layout>
   );
 }

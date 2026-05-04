@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api, { ApplicationDetail } from '../services/api';
+import Layout from '../components/Layout';
+import api from '../services/api';
+import type { ApplicationDetail } from '../services/api';
 
 export default function ApplicationDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -43,44 +45,49 @@ export default function ApplicationDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12">
-        <div className="container mx-auto px-4 max-w-6xl">
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <Layout>
+        <div className="min-h-screen bg-gray-50 py-12">
+          <div className="container mx-auto px-4 max-w-6xl">
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+            </div>
           </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   if (error || !application) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12">
-        <div className="container mx-auto px-4 max-w-6xl">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-            <div className="flex items-start">
-              <svg className="w-6 h-6 text-red-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div>
-                <h3 className="text-red-800 font-semibold mb-1">Error Loading Application</h3>
-                <p className="text-red-700 text-sm">{error || 'Application not found'}</p>
+      <Layout>
+        <div className="min-h-screen bg-gray-50 py-12">
+          <div className="container mx-auto px-4 max-w-6xl">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+              <div className="flex items-start">
+                <svg className="w-6 h-6 text-red-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <h3 className="text-red-800 font-semibold mb-1">Error Loading Application</h3>
+                  <p className="text-red-700 text-sm">{error || 'Application not found'}</p>
+                </div>
               </div>
+              <button
+                onClick={() => navigate('/applications')}
+                className="mt-4 text-red-700 hover:text-red-900 font-medium"
+              >
+                ← Back to Applications
+              </button>
             </div>
-            <button
-              onClick={() => navigate('/applications')}
-              className="mt-4 text-red-700 hover:text-red-900 font-medium"
-            >
-              ← Back to Applications
-            </button>
           </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <Layout>
+      <div className="min-h-screen bg-gray-50 py-12">
       <div className="container mx-auto px-4 max-w-6xl">
         {/* Header */}
         <div className="mb-8">
@@ -302,5 +309,6 @@ export default function ApplicationDetailPage() {
         )}
       </div>
     </div>
+    </Layout>
   );
 }

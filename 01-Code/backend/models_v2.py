@@ -6,6 +6,11 @@ from sqlalchemy import Column, Integer, String, Text, JSON, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from db import Base
+import uuid
+
+
+def _new_uuid() -> str:
+    return str(uuid.uuid4())
 
 
 class User(Base):
@@ -32,6 +37,7 @@ class Resume(Base):
     __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, index=True)
+    public_id = Column(String(36), default=_new_uuid, unique=True, index=True, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     filename = Column(String(255), nullable=False)
     raw_text = Column(Text, nullable=False)
@@ -53,6 +59,7 @@ class JobDescription(Base):
     __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, index=True)
+    public_id = Column(String(36), default=_new_uuid, unique=True, index=True, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     filename = Column(String(255), nullable=True)  # Nullable for URL-fetched JDs
     job_url = Column(String(1000), nullable=True)  # Job posting URL if fetched

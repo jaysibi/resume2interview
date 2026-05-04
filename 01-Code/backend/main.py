@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, status, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, status, Form, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -35,10 +35,11 @@ logger = logging.getLogger(__name__)
 
 # Constants
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
-ALLOWED_EXTENSIONS = ["pdf", "docx"]
+ALLOWED_EXTENSIONS = ["pdf", "docx", "txt"]
 ALLOWED_MIME_TYPES = {
     "pdf": [b"%PDF"],
     "docx": [b"PK\x03\x04"]  # ZIP file signature (DOCX is a ZIP)
+    # Note: TXT files don't have a magic number, so we skip validation for them
 }
 
 app = FastAPI(
@@ -47,10 +48,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Rate limiting - TEMPORARILY DISABLED FOR DEBUGGING
-# limiter = Limiter(key_func=get_remote_address)
-# app.state.limiter = limiter
-# app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# Rate limiting — protects against DoS and brute-force attacks
+# default_limits applies to every route
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 def get_db():
     db = SessionLocal()
@@ -59,16 +61,31 @@ def get_db():
     finally:
         db.close()
 
-# Environment-specific CORS configuration
-ALLOWED_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
+# CORS — explicit allowlist; never use '*' with credentials
+# In development the frontend runs on localhost:5173 (Vite default)
+# Set CORS_ORIGINS env var in production to your actual frontend URL(s)
+_raw_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
 )
+
+# Security headers middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'none'; frame-ancestors 'none'"
+    )
+    return response
 
 # Middleware for request/response logging - TEMPORARILY DISABLED FOR DEBUGGING
 # @app.middleware("http")
@@ -140,7 +157,7 @@ def validate_file_extension(filename: str) -> str:
             detail=error_response(
                 "INVALID_FILE_TYPE",
                 "File must have a valid extension",
-                "Supported: PDF, DOCX"
+                "Supported: PDF, DOCX, TXT"
             )
         )
     
@@ -150,7 +167,7 @@ def validate_file_extension(filename: str) -> str:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error_response(
                 "INVALID_FILE_TYPE",
-                "Only PDF and DOCX files are supported",
+                "Only PDF, DOCX, and TXT files are supported",
                 f"Received: .{ext}"
             )
         )
@@ -176,7 +193,8 @@ def validate_file_content(content: bytes, expected_ext: str, filename: str) -> N
     logger.info(f"File content validated: {filename} is valid {expected_ext.upper()}")
 
 @app.get("/")
-def read_root():
+@limiter.limit("60/minute")
+def read_root(request: Request):
     """Health check endpoint"""
     return {"message": "Resume Tailor API is running."}
 
@@ -189,11 +207,43 @@ def test_simple():
     return {"status": "success", "message": "Simple endpoint works"}
 
 
+def _extract_resume_ai(resume_id: int, raw_text: str) -> None:
+    """Background task: run AI skill/experience/education extraction after the upload response is sent."""
+    db = SessionLocal()
+    try:
+        ai_service = get_ai_service()
+        logger.info(f"[BG] Extracting skills for resume {resume_id}")
+        extracted_data = ai_service.extract_skills(raw_text)
+
+        if extracted_data.skills:
+            skills_list = [{"name": s.name, "category": s.category, "proficiency": s.proficiency} for s in extracted_data.skills]
+            crud_v2.update_resume(db, resume_id, {"skills": skills_list})
+            logger.info(f"[BG] Updated {len(skills_list)} skills for resume {resume_id}")
+
+        if extracted_data.experience:
+            experience_list = [e.model_dump() for e in extracted_data.experience]
+            crud_v2.update_resume(db, resume_id, {"experience": experience_list})
+            logger.info(f"[BG] Updated {len(experience_list)} experience entries for resume {resume_id}")
+
+        if extracted_data.education:
+            education_list = [e.model_dump() for e in extracted_data.education]
+            crud_v2.update_resume(db, resume_id, {"education": education_list})
+            logger.info(f"[BG] Updated {len(education_list)} education entries for resume {resume_id}")
+
+    except AIServiceError as e:
+        logger.error(f"[BG] AI extraction failed for resume {resume_id}: {str(e)}")
+    except Exception as e:
+        logger.error(f"[BG] Unexpected error during AI extraction for resume {resume_id}: {str(e)}")
+    finally:
+        db.close()
+
+
 @app.post("/upload-resume/")
-# @limiter.limit("10/minute")  # Temporarily disabled for debugging
+@limiter.limit("30/minute")
 async def upload_resume(
-    request: Request, 
-    file: UploadFile = File(...), 
+    request: Request,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
     user_email: Optional[str] = Form(None),  # V2: Optional user context
     db: Session = Depends(get_db)
 ):
@@ -255,57 +305,19 @@ async def upload_resume(
                 resume = crud_v2.create_resume(db, user.id, file.filename, result)
                 logger.info(f"Resume stored with ID: {resume.id} (V1 mode)")
             
-            # Extract skills, experience, and education using AI
-            try:
-                ai_service = get_ai_service()
-                logger.info(f"Extracting skills for resume {resume.id}")
-                extracted_data = ai_service.extract_skills(result["raw_text"])
+            # Schedule AI extraction as a background task so response returns immediately
+            background_tasks.add_task(_extract_resume_ai, resume.id, result["raw_text"])
+            logger.info(f"[BG] AI extraction queued for resume {resume.id}")
+
+            return {
+                "id": resume.public_id,
+                "filename": resume.filename,
+                "parsed": result,
+                "user_id": user_id,
+                "extracted": None,
+                "ai_status": "processing"
+            }
                 
-                # Update database with extracted data
-                if extracted_data.skills:
-                    skills_list = [{"name": s.name, "category": s.category, "proficiency": s.proficiency} for s in extracted_data.skills]
-                    crud_v2.update_resume(db, resume.id, {"skills": skills_list})
-                    logger.info(f"Updated {len(skills_list)} skills for resume {resume.id}")
-                
-                if extracted_data.experience:
-                    experience_list = [e.model_dump() for e in extracted_data.experience]
-                    crud_v2.update_resume(db, resume.id, {"experience": experience_list})
-                    logger.info(f"Updated {len(experience_list)} experience entries for resume {resume.id}")
-                
-                if extracted_data.education:
-                    education_list = [e.model_dump() for e in extracted_data.education]
-                    crud_v2.update_resume(db, resume.id, {"education": education_list})
-                    logger.info(f"Updated {len(education_list)} education entries for resume {resume.id}")
-                
-                # Return enriched data
-                response = {
-                    "id": resume.id,
-                    "filename": resume.filename,
-                    "parsed": result,
-                    "user_id": user_id,
-                    "extracted": {
-                        "skills": skills_list if extracted_data.skills else [],
-                        "experience": experience_list if extracted_data.experience else [],
-                        "education": education_list if extracted_data.education else []
-                    }
-                }
-                    
-                return response
-                
-            except AIServiceError as e:
-                # AI extraction failed - still return resume but log error
-                logger.error(f"AI extraction failed for resume {resume.id}: {str(e)}")
-                response = {
-                    "id": resume.id,
-                    "filename": resume.filename,
-                    "parsed": result,
-                    "user_id": user_id,
-                    "extracted": None,
-                    "ai_error": "Skill extraction failed, but resume was saved successfully"
-                }
-                    
-                return response
-            
         except ValueError as e:
             # Parsing errors
             logger.error(f"Parsing error for {file.filename}: {str(e)}")
@@ -320,12 +332,13 @@ async def upload_resume(
         except Exception as e:
             # Unexpected errors
             logger.error(f"Unexpected error processing {file.filename}: {str(e)}")
+            logger.exception("Full traceback:")  # Log full stack trace
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=error_response(
                     "INTERNAL_SERVER_ERROR",
                     "An unexpected error occurred while processing your file",
-                    None
+                    str(e)  # Include error details for debugging
                 )
             )
         finally:
@@ -339,17 +352,18 @@ async def upload_resume(
     except Exception as e:
         # Catch any other unexpected errors
         logger.error(f"Unexpected error in upload_resume: {str(e)}")
+        logger.exception("Full traceback:")  # Log full stack trace
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_response(
                 "INTERNAL_SERVER_ERROR",
                 "An unexpected error occurred",
-                None
+                str(e)  # Include error details for debugging
             )
         )
 
 @app.post("/upload-jd/")
-# @limiter.limit("10/minute")  # Temporarily disabled for debugging
+@limiter.limit("30/minute")
 async def upload_jd(
     request: Request, 
     file: UploadFile = File(...), 
@@ -423,7 +437,7 @@ async def upload_jd(
                 logger.info(f"JD stored with ID: {jd.id} (V1 mode)")
             
             response = {
-                "id": jd.id,
+                "id": jd.public_id,
                 "filename": jd.filename,
                 "parsed": result,
                 "user_id": user_id
@@ -453,12 +467,13 @@ async def upload_jd(
         except Exception as e:
             # Unexpected errors
             logger.error(f"Unexpected error processing {file.filename}: {str(e)}")
+            logger.exception("Full traceback:")  # Log full stack trace
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=error_response(
                     "INTERNAL_SERVER_ERROR",
                     "An unexpected error occurred while processing your file",
-                    None
+                    str(e)  # Include error details for debugging
                 )
             )
         finally:
@@ -472,42 +487,42 @@ async def upload_jd(
     except Exception as e:
         # Catch any other unexpected errors
         logger.error(f"Unexpected error in upload_jd: {str(e)}")
+        logger.exception("Full traceback:")  # Log full stack trace
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_response(
                 "INTERNAL_SERVER_ERROR",
                 "An unexpected error occurred",
-                None
+                str(e)  # Include error details for debugging
             )
         )
-@app.get("/resume/{resume_id}")
-def get_resume(resume_id: int, db: Session = Depends(get_db)):
+@app.get("/resume/{resume_public_id}")
+@limiter.limit("60/minute")
+def get_resume(request: Request, resume_public_id: str, db: Session = Depends(get_db)):
     """
-    Retrieve a previously uploaded resume by ID.
-    
-    - **resume_id**: Database ID of the resume
+    Retrieve a previously uploaded resume by public UUID.
     """
     try:
-        resume = crud_v2.get_resume(db, resume_id)
+        resume = crud_v2.get_resume_by_public_id(db, resume_public_id)
         if not resume:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=error_response(
                     "NOT_FOUND",
-                    f"Resume with ID {resume_id} not found",
+                    f"Resume not found",
                     None
                 )
             )
         
         return {
-            "id": resume.id,
+            "id": resume.public_id,
             "filename": resume.filename,
             "raw_text": resume.raw_text,
             "skills": resume.skills,
             "experience": resume.experience,
             "education": resume.education,
             "tools": resume.tools,
-            "created_at": resume.created_at.isoformat() if resume.created_at else None,
+            "created_at": resume.upload_date.isoformat() if resume.upload_date else None,
             "updated_at": resume.updated_at.isoformat() if resume.updated_at else None
         }
     except HTTPException:
@@ -523,33 +538,32 @@ def get_resume(resume_id: int, db: Session = Depends(get_db)):
             )
         )
 
-@app.get("/jd/{jd_id}")
-def get_jd(jd_id: int, db: Session = Depends(get_db)):
+@app.get("/jd/{jd_public_id}")
+@limiter.limit("60/minute")
+def get_jd(request: Request, jd_public_id: str, db: Session = Depends(get_db)):
     """
-    Retrieve a previously uploaded job description by ID.
-    
-    - **jd_id**: Database ID of the job description
+    Retrieve a previously uploaded job description by public UUID.
     """
     try:
-        jd = crud_v2.get_jd(db, jd_id)
+        jd = crud_v2.get_jd_by_public_id(db, jd_public_id)
         if not jd:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=error_response(
                     "NOT_FOUND",
-                    f"Job description with ID {jd_id} not found",
+                    f"Job description not found",
                     None
                 )
             )
         
         return {
-            "id": jd.id,
+            "id": jd.public_id,
             "filename": jd.filename,
             "raw_text": jd.raw_text,
             "mandatory_skills": jd.mandatory_skills,
             "preferred_skills": jd.preferred_skills,
             "keywords": jd.keywords,
-            "created_at": jd.created_at.isoformat() if jd.created_at else None,
+            "created_at": jd.upload_date.isoformat() if jd.upload_date else None,
             "updated_at": jd.updated_at.isoformat() if jd.updated_at else None
         }
     except HTTPException:
@@ -578,46 +592,35 @@ def gap_analysis_test(resume_id: int, jd_id: int):
 
 
 @app.post("/gap-analysis/")
+@limiter.limit("20/minute")
 def gap_analysis(
-    resume_id: int, 
-    jd_id: int, 
+    request: Request,
+    resume_id: str,
+    jd_id: str,
     user_email: Optional[str] = None,  # V2: Optional user context
     create_application: bool = False,  # V2: Create application record
     db: Session = Depends(get_db)
 ):
     """
     Analyze gaps between a resume and job description.
-    Identifies missing skills, strengths, weaknesses, and provides recommendations.
     
-    V2: Optionally creates an Application record and stores results for tracking.
-    
-    - **resume_id**: Database ID of the resume
-    - **jd_id**: Database ID of the job description
-    - **user_email**: (Optional) User email for V2 multi-user support
-    - **create_application**: (Optional) Create application record and store results (V2)
+    - **resume_id**: Public UUID of the resume
+    - **jd_id**: Public UUID of the job description
     """
     try:
-        # Retrieve resume and JD from database
-        resume = crud_v2.get_resume(db, resume_id)
+        # Retrieve resume and JD from database using public UUIDs
+        resume = crud_v2.get_resume_by_public_id(db, resume_id)
         if not resume:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=error_response(
-                    "NOT_FOUND",
-                    f"Resume with ID {resume_id} not found",
-                    None
-                )
+                detail=error_response("NOT_FOUND", "Resume not found", None)
             )
         
-        jd = crud_v2.get_jd(db, jd_id)
+        jd = crud_v2.get_jd_by_public_id(db, jd_id)
         if not jd:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=error_response(
-                    "NOT_FOUND",
-                    f"Job description with ID {jd_id} not found",
-                    None
-                )
+                detail=error_response("NOT_FOUND", "Job description not found", None)
             )
         
         # V2: Get or create user if create_application is True
@@ -718,35 +721,28 @@ def gap_analysis(
 
 
 @app.post("/ats-score/")
-# @limiter.limit("20/minute")  # Temporarily disabled for debugging
-async def ats_score(request: Request, resume_id: int, jd_id: int, db: Session = Depends(get_db)):
+@limiter.limit("20/minute")
+async def ats_score(request: Request, resume_id: str, jd_id: str, db: Session = Depends(get_db)):
     """
     Score a resume for ATS (Applicant Tracking System) compatibility.
-    Analyzes keyword matching, formatting, and provides improvement recommendations.
     
-    - **resume_id**: Database ID of the resume
-    - **jd_id**: Database ID of the job description
+    - **resume_id**: Public UUID of the resume
+    - **jd_id**: Public UUID of the job description
     """
     try:
-        # Retrieve resume and JD from database
-        resume = crud_v2.get_resume(db, resume_id)
+        # Retrieve resume and JD from database using public UUIDs
+        resume = crud_v2.get_resume_by_public_id(db, resume_id)
         if not resume:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=error_response(
-                    "NOT_FOUND",
-                    f"Resume with ID {resume_id} not found",
-                    None
-                )
+                detail=error_response("NOT_FOUND", "Resume not found", None)
             )
         
-        jd = crud_v2.get_jd(db, jd_id)
+        jd = crud_v2.get_jd_by_public_id(db, jd_id)
         if not jd:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=error_response(
-                    "NOT_FOUND",
-                    f"Job description with ID {jd_id} not found",
+                detail=error_response("NOT_FOUND", "Job description not found",
                     None
                 )
             )

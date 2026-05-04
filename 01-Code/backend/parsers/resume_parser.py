@@ -34,6 +34,26 @@ def parse_docx(file_path: str) -> str:
         raise ValueError(f"Failed to parse DOCX file: {str(e)}")
 
 
+def parse_txt(file_path: str) -> str:
+    """Extract text from TXT file"""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            text = f.read()
+        return text
+    except UnicodeDecodeError:
+        # Try with different encoding if UTF-8 fails
+        try:
+            with open(file_path, 'r', encoding='latin-1') as f:
+                text = f.read()
+            return text
+        except Exception as e:
+            logger.error(f"Error parsing TXT with latin-1 encoding: {e}")
+            raise ValueError(f"Failed to parse TXT file: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error parsing TXT: {e}")
+        raise ValueError(f"Failed to parse TXT file: {str(e)}")
+
+
 def normalize_text(text: str) -> str:
     """Clean and normalize extracted text"""
     if not text:
@@ -57,7 +77,7 @@ def parse_resume(file_path: str, file_type: str) -> Dict[str, Any]:
     
     Args:
         file_path: Path to the resume file
-        file_type: File extension (pdf or docx)
+        file_type: File extension (pdf, docx, or txt)
     
     Returns:
         Dictionary with parsed resume data
@@ -71,6 +91,8 @@ def parse_resume(file_path: str, file_type: str) -> Dict[str, Any]:
             text = parse_pdf(file_path)
         elif file_type == "docx":
             text = parse_docx(file_path)
+        elif file_type == "txt":
+            text = parse_txt(file_path)
         else:
             raise ValueError(f"Unsupported file type: {file_type}")
         

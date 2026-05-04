@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api, { Application } from '../services/api';
+import Layout from '../components/Layout';
+import api from '../services/api';
+import type { Application } from '../services/api';
 
 export default function ApplicationsPage() {
   const navigate = useNavigate();
@@ -74,27 +76,28 @@ export default function ApplicationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="container mx-auto px-4 max-w-6xl">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                My Applications
-              </h1>
-              <p className="text-lg text-gray-600">
-                Track your resume analyses and job applications
-              </p>
+    <Layout>
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="container mx-auto px-4 max-w-6xl">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                  My Applications
+                </h1>
+                <p className="text-lg text-gray-600">
+                  Track your resume analyses and job applications
+                </p>
+              </div>
+              <button
+                onClick={() => navigate('/upload')}
+                className="btn-primary"
+              >
+                + New Analysis
+              </button>
             </div>
-            <button
-              onClick={() => navigate('/upload')}
-              className="btn-primary"
-            >
-              + New Analysis
-            </button>
           </div>
-        </div>
 
         {/* Loading State */}
         {loading && (
@@ -234,5 +237,6 @@ export default function ApplicationsPage() {
         )}
       </div>
     </div>
+    </Layout>
   );
 }

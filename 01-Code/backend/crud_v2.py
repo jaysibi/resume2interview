@@ -89,11 +89,19 @@ def create_resume(db: Session, user_id: int, filename: str, parsed: Dict[str, An
         raise
 
 def get_resume(db: Session, resume_id: int) -> Optional[Resume]:
-    """Retrieve a resume by ID"""
+    """Retrieve a resume by integer ID"""
     try:
         return db.query(Resume).filter(Resume.id == resume_id).first()
     except SQLAlchemyError as e:
         logger.error(f"Database error retrieving resume {resume_id}: {e}")
+        raise
+
+def get_resume_by_public_id(db: Session, public_id: str) -> Optional[Resume]:
+    """Retrieve a resume by public UUID — used in API endpoints exposed to clients"""
+    try:
+        return db.query(Resume).filter(Resume.public_id == public_id).first()
+    except SQLAlchemyError as e:
+        logger.error(f"Database error retrieving resume by public_id {public_id}: {e}")
         raise
 
 def get_resumes_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100) -> List[Resume]:
@@ -158,11 +166,19 @@ def create_jd(db: Session, user_id: int, filename: Optional[str], parsed: Dict[s
         raise
 
 def get_jd(db: Session, jd_id: int) -> Optional[JobDescription]:
-    """Retrieve a job description by ID"""
+    """Retrieve a job description by integer ID"""
     try:
         return db.query(JobDescription).filter(JobDescription.id == jd_id).first()
     except SQLAlchemyError as e:
         logger.error(f"Database error retrieving JD {jd_id}: {e}")
+        raise
+
+def get_jd_by_public_id(db: Session, public_id: str) -> Optional[JobDescription]:
+    """Retrieve a job description by public UUID — used in API endpoints exposed to clients"""
+    try:
+        return db.query(JobDescription).filter(JobDescription.public_id == public_id).first()
+    except SQLAlchemyError as e:
+        logger.error(f"Database error retrieving JD by public_id {public_id}: {e}")
         raise
 
 def get_jds_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100) -> List[JobDescription]:

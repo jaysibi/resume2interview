@@ -3,7 +3,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 // Types for API responses
 export interface Resume {
-  id: number;
+  id: string;
   filename: string;
   raw_text: string;
   upload_date: string;
@@ -11,7 +11,7 @@ export interface Resume {
 }
 
 export interface JobDescription {
-  id: number;
+  id: string;
   filename: string;
   raw_text: string;
   upload_date: string;
@@ -126,17 +126,23 @@ export class APIError extends Error {
 }
 
 // Generic API request handler
+// timeoutMs: how long to wait before aborting; 0 = no timeout (default 30s)
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  timeoutMs = 30_000
 ): Promise<T> {
+  const controller = new AbortController();
+  const timer = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
+      signal: controller.signal,
       headers: {
         ...options.headers,
       },
     });
+    if (timer) clearTimeout(timer);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -165,8 +171,12 @@ async function apiRequest<T>(
 
     return await response.json();
   } catch (error) {
+    if (timer) clearTimeout(timer);
     if (error instanceof APIError) {
       throw error;
+    }
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new APIError('The request timed out. The server is taking too long to respond — please try again.');
     }
     throw new APIError(
       error instanceof Error ? error.message : 'Network error occurred'
@@ -195,7 +205,7 @@ export const api = {
     return apiRequest('/upload-resume/', {
       method: 'POST',
       body: formData,
-    });
+    }, 120_000);
   },
 
   async getResume(id: number): Promise<Resume> {
@@ -235,7 +245,7 @@ export const api = {
     return apiRequest('/upload-jd/', {
       method: 'POST',
       body: formData,
-    });
+    }, 120_000);
   },
 
   async getJobDescription(id: number): Promise<JobDescription> {
@@ -248,15 +258,15 @@ export const api = {
 
   // Analysis Endpoints
   async getGapAnalysis(
-    resumeId: number,
-    jdId: number,
+    resumeId: string,
+    jdId: string,
     userEmail?: string,
     createApplication: boolean = false
   ): Promise<GapAnalysisResponse> {
     // Build query parameters
     const params = new URLSearchParams({ 
-      resume_id: resumeId.toString(), 
-      jd_id: jdId.toString() 
+      resume_id: resumeId, 
+      jd_id: jdId
     });
     
     // V2: Add optional parameters
@@ -301,8 +311,8 @@ export const api = {
   },
 
   async getATSScore(
-    resumeId: number,
-    jdId: number
+    resumeId: string,
+    jdId: string
   ): Promise<ATSScoreResponse> {
     // Backend returns nested structure: {resume_id, jd_id, scoring: {...}}
     // We need to flatten it for the frontend

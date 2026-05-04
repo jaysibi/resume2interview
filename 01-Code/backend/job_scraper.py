@@ -193,6 +193,17 @@ def fetch_jd_from_url(url: str) -> Dict[str, any]:
         response = requests.get(url, headers=HEADERS, timeout=10)
         response.raise_for_status()
         
+        # Check for redirects to homepage (common when URL is invalid)
+        if response.history:
+            final_url = response.url.lower()
+            # Check if redirected to homepage or root
+            if final_url.endswith('/') and len(final_url.split('/')) <= 4:
+                logger.warning(f"URL redirected to homepage: {response.url}")
+                return {
+                    'success': False,
+                    'error': f'Job posting not found - URL redirected to homepage. The job may have been removed or the URL is invalid. Original: {url}, Redirected to: {response.url}'
+                }
+        
         # Parse with BeautifulSoup
         soup = BeautifulSoup(response.content, 'html.parser')
         
@@ -208,9 +219,10 @@ def fetch_jd_from_url(url: str) -> Dict[str, any]:
         
         # Validate that we got some text
         if not result['raw_text'] or len(result['raw_text'].strip()) < 100:
+            logger.warning(f"Insufficient content extracted from {url}: {len(result['raw_text'] if result['raw_text'] else '')} chars")
             return {
                 'success': False,
-                'error': 'Could not extract sufficient job description text from the URL. The page may require authentication or the structure is not supported.'
+                'error': 'Could not extract sufficient job description text from the URL. This may be due to: (1) Invalid or expired job posting, (2) Authentication/login required, (3) Page structure not supported. Please try copying the job description and uploading as a text file instead.'
             }
         
         return {
@@ -225,13 +237,37 @@ def fetch_jd_from_url(url: str) -> Dict[str, any]:
         logger.error(f"Timeout fetching URL: {url}")
         return {
             'success': False,
-            'error': 'Request timed out. The job board may be slow or unavailable.'
+            'error': 'Request timed out. The job board may be slow or unavailable. Please try again or use file upload instead.'
         }
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"HTTP error fetching URL {url}: {e}")
+        
+        # Provide more specific error messages based on status code
+        if e.response.status_code == 403:
+            return {
+                'success': False,
+                'error': 'Access blocked by job board (bot detection). Please copy the job description text and upload it as a file instead.'
+            }
+        elif e.response.status_code == 404:
+            return {
+                'success': False,
+                'error': 'Job posting not found. The URL may be expired or invalid. Please verify the URL works in your browser.'
+            }
+        elif e.response.status_code == 401:
+            return {
+                'success': False,
+                'error': 'Authentication required. This job posting requires login. Please copy the job description text and upload as a file.'
+            }
+        else:
+            return {
+                'success': False,
+                'error': f'HTTP {e.response.status_code} error: {str(e)}'
+            }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error fetching URL {url}: {e}")
         return {
             'success': False,
-            'error': f'Error fetching the URL: {str(e)}'
+            'error': f'Error fetching the URL: {str(e)}. Please verify the URL is valid and accessible.'
         }
     except Exception as e:
         logger.error(f"Unexpected error fetching JD from URL {url}: {e}")
