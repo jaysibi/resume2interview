@@ -115,13 +115,14 @@ export interface ApplicationDetail {
 
 // API Error class
 export class APIError extends Error {
-  constructor(
-    message: string,
-    public status?: number,
-    public data?: any
-  ) {
+  status?: number;
+  data?: any;
+  
+  constructor(message: string, status?: number, data?: any) {
     super(message);
     this.name = 'APIError';
+    this.status = status;
+    this.data = data;
   }
 }
 

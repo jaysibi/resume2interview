@@ -3,7 +3,7 @@ import Layout from '../components/Layout';
 import { useState } from 'react';
 
 export default function LandingPage() {
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [, setResumeFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
