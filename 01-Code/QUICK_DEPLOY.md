@@ -1,35 +1,265 @@
-# Resume2Interview - Quick Deployment Guide
+# Resume2Interview - Multi-Environment Deployment Guide
 
-## 🚀 Fastest Way to Deploy (5 minutes)
+## 🎯 Deployment Strategy
 
-### Frontend to Vercel
+**Two Environments:**
+- **Staging**: For testing and preview (Vercel auto-generated URL)
+- **Production**: Live at www.resume2interview.com
 
-1. **Go to Vercel Dashboard**: https://vercel.com/new
-
-2. **Import Your GitHub Repository**:
-   - Click "Import Git Repository"
-   - Select: `jaysibi/resume2interview`
-   - Click "Import"
-
-3. **Configure Project**:
-   ```
-   Root Directory: 01-Code/frontend
-   Framework Preset: Vite
-   Build Command: npm run build
-   Output Directory: dist
-   Install Command: npm install
-   ```
-
-4. **Add Environment Variable**:
-   - Click "Environment Variables"
-   - Add: `VITE_API_URL` = `https://your-backend-url.railway.app`
-   - (You'll get this URL after deploying backend)
-
-5. **Click "Deploy"** ✅
+**Architecture:**
+```
+GitHub (ui-ux-redesign branch)
+    ↓
+┌───────────────────────┬────────────────────────┐
+│    STAGING            │     PRODUCTION         │
+├───────────────────────┼────────────────────────┤
+│ Frontend (Vercel)     │ Frontend (Vercel)      │
+│ staging-*.vercel.app  │ www.resume2interview.com│
+│         ↓             │          ↓             │
+│ Backend (Railway)     │ Backend (Railway)      │
+│ staging-api.railway   │ api-prod.railway       │
+│         ↓             │          ↓             │
+│ PostgreSQL (Railway)  │ PostgreSQL (Railway)   │
+└───────────────────────┴────────────────────────┘
+```
 
 ---
 
-### Backend to Railway
+## 🚀 Step-by-Step Deployment
+
+### Phase 1: Deploy Staging Environment
+
+#### 1.1 Deploy Staging Backend to Railway
+
+1. **Go to Railway**: https://railway.app
+2. **Create New Project**: Click "New Project" → "Deploy from GitHub repo"
+3. **Select Repository**: `jaysibi/resume2interview`
+4. **Configure Service**:
+   - Name: `resume2interview-backend-staging`
+   - Root Directory: `01-Code/backend`
+   - Branch: `ui-ux-redesign`
+5. **Add PostgreSQL Database**:
+   - Click "New" → "Database" → "PostgreSQL"
+   - Name it: `resume2interview-db-staging`
+6. **Set Environment Variables**:
+   ```
+   OPENAI_API_KEY=sk-proj-your-key-here
+   CORS_ORIGINS=https://resume2interview-staging.vercel.app,https://*.vercel.app
+   ENVIRONMENT=staging
+   ```
+7. **Generate Domain**:
+   - Settings → Networking → Generate Domain
+   - Copy URL (e.g., `https://resume2interview-staging.up.railway.app`)
+
+#### 1.2 Deploy Staging Frontend to Vercel
+
+1. **Go to Vercel**: https://vercel.com/new
+2. **Import Repository**: `jaysibi/resume2interview`
+3. **Configure Project**:
+   ```
+   Project Name: resume2interview-staging
+   Root Directory: 01-Code/frontend
+   Framework: Vite
+   Build Command: npm run build
+   Output Directory: dist
+   Branch: ui-ux-redesign
+   ```
+4. **Add Environment Variables**:
+   ```
+   VITE_API_URL=https://resume2interview-staging.up.railway.app
+   VITE_ENV=staging
+   ```
+5. **Deploy** → Get staging URL (e.g., `resume2interview-staging.vercel.app`)
+
+#### 1.3 Update CORS in Staging Backend
+
+Go back to Railway staging service and update:
+```
+CORS_ORIGINS=https://resume2interview-staging.vercel.app
+```
+
+---
+
+### Phase 2: Deploy Production Environment
+
+#### 2.1 Deploy Production Backend to Railway
+
+1. **Create Another Project** in Railway
+2. **Or Add New Service** to existing project:
+   - Click "New" → "GitHub Repo"
+   - Select same repo
+3. **Configure Service**:
+   - Name: `resume2interview-backend-prod`
+   - Root Directory: `01-Code/backend`
+   - Branch: `main` (or `ui-ux-redesign` for now)
+4. **Add PostgreSQL Database**:
+   - Click "New" → "Database" → "PostgreSQL"
+   - Name: `resume2interview-db-prod`
+5. **Set Environment Variables**:
+   ```
+   OPENAI_API_KEY=sk-proj-your-key-here
+   CORS_ORIGINS=https://www.resume2interview.com,https://resume2interview.com
+   ENVIRONMENT=production
+   ```
+6. **Add Custom Domain** (Optional but recommended):
+   - Settings → Networking → Custom Domain
+   - Add: `api.resume2interview.com`
+   - Configure DNS:
+     - Type: CNAME
+     - Name: api
+     - Value: (Railway provides this)
+7. **Or use Railway domain**: `https://resume2interview-prod.up.railway.app`
+
+#### 2.2 Deploy Production Frontend to Vercel
+
+1. **Create New Project** in Vercel
+2. **Import Repository**: `jaysibi/resume2interview`
+3. **Configure Project**:
+   ```
+   Project Name: resume2interview-production
+   Root Directory: 01-Code/frontend
+   Framework: Vite
+   Build Command: npm run build
+   Output Directory: dist
+   Branch: main (or specify production branch)
+   ```
+4. **Add Environment Variables**:
+   ```
+   VITE_API_URL=https://api.resume2interview.com
+   (or: https://resume2interview-prod.up.railway.app)
+   VITE_ENV=production
+   ```
+5. **Deploy**
+
+#### 2.3 Add Custom Domain to Vercel
+
+1. **In Vercel Project Settings**:
+   - Go to "Domains"
+   - Click "Add"
+   - Enter: `www.resume2interview.com`
+   - Click "Add" again for apex domain: `resume2interview.com`
+
+2. **Configure DNS at Your Domain Registrar**:
+   
+   **For www subdomain:**
+   ```
+   Type: CNAME
+   Name: www
+   Value: cname.vercel-dns.com
+   ```
+   
+   **For apex domain (resume2interview.com):**
+   ```
+   Type: A
+   Name: @
+   Value: 76.76.21.21
+   ```
+   
+   **And:**
+   ```
+   Type: CNAME
+   Name: @
+   Value: cname.vercel-dns.com
+   ```
+
+3. **Wait for DNS propagation** (5-60 minutes)
+
+4. **Vercel will auto-provision SSL certificate**
+
+---
+
+### Phase 3: Database Migrations
+
+#### Staging Database
+```bash
+cd C:\Projects\ResumeTailor\01-Code\backend
+
+# Get DATABASE_URL from Railway staging
+$env:DATABASE_URL="postgresql://postgres:...@staging-host.railway.app:5432/railway"
+
+# Run migrations
+alembic upgrade head
+```
+
+#### Production Database
+```bash
+# Get DATABASE_URL from Railway production
+$env:DATABASE_URL="postgresql://postgres:...@prod-host.railway.app:5432/railway"
+
+# Run migrations
+alembic upgrade head
+```
+
+---
+
+## 🔄 Deployment Workflow
+
+### Development → Staging → Production
+
+1. **Make changes locally** on `ui-ux-redesign` branch
+2. **Push to GitHub**:
+   ```bash
+   git push origin ui-ux-redesign
+   ```
+3. **Staging auto-deploys** (Vercel + Railway watch the branch)
+4. **Test on staging**: `https://resume2interview-staging.vercel.app`
+5. **If tests pass, merge to main**:
+   ```bash
+   git checkout main
+   git merge ui-ux-redesign
+   git push origin main
+   ```
+6. **Production auto-deploys** to `www.resume2interview.com`
+
+### Manual Deployment (Alternative)
+
+If you prefer manual control:
+
+**Disable Auto-Deploy:**
+- **Vercel**: Project Settings → Git → Enable "Production Branch" = `main` only
+- **Railway**: Service Settings → Disable auto-deploy
+
+**Manual Deploy:**
+```bash
+# Deploy to Vercel production
+cd C:\Projects\ResumeTailor\01-Code\frontend
+vercel --prod
+
+# Railway deploys automatically on push, or trigger manually in dashboard
+```
+
+---
+
+## 🧪 Testing Checklist
+
+### Staging Environment
+Before promoting to production:
+
+- [ ] Frontend loads: `https://resume2interview-staging.vercel.app`
+- [ ] Backend API: `https://staging-backend.railway.app/docs`
+- [ ] Upload resume works
+- [ ] Upload job description works
+- [ ] Gap analysis generates correctly
+- [ ] ATS score calculates
+- [ ] Applications page shows data
+- [ ] Delete functionality works
+- [ ] Rate limiting triggers correctly
+- [ ] No console errors
+- [ ] Mobile responsive
+
+### Production Environment
+After deployment:
+
+- [ ] Domain resolves: `www.resume2interview.com`
+- [ ] SSL certificate valid (🔒 in browser)
+- [ ] Backend API accessible
+- [ ] All features work end-to-end
+- [ ] Performance is acceptable
+- [ ] Monitor logs for errors
+
+---
+
+### Quick Staging-Only Setup (Original Guide)
 
 1. **Go to Railway**: https://railway.app
 

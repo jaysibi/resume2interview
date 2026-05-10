@@ -1,14 +1,76 @@
-# Resume2Interview - Deployment Guide
+# Resume2Interview - Comprehensive Deployment Guide
 
-## Architecture Overview
+## 🎯 Multi-Environment Architecture
 
-- **Frontend**: React + Vite → Deploy to Vercel
-- **Backend**: FastAPI + Python → Deploy to Railway/Render
-- **Database**: PostgreSQL → Vercel Postgres or Railway
+### Environment Strategy
+
+| Environment | Purpose | URL | Auto-Deploy |
+|------------|---------|-----|-------------|
+| **Staging** | Testing & QA | `resume2interview-staging.vercel.app` | Yes (ui-ux-redesign branch) |
+| **Production** | Live Production | `www.resume2interview.com` | Yes (main branch) |
+
+### Infrastructure Overview
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    GitHub Repository                     │
+│              jaysibi/resume2interview                    │
+└──────────────────┬─────────────────┬────────────────────┘
+                   │                 │
+          ┌────────▼────────┐   ┌───▼──────────┐
+          │  ui-ux-redesign │   │     main     │
+          │     branch       │   │    branch    │
+          └────────┬────────┘   └───┬──────────┘
+                   │                 │
+      ┌────────────┴────────┐   ┌───┴──────────────┐
+      │                     │   │                  │
+┌─────▼─────────┐  ┌────────▼───▼───┐  ┌──────────▼────────┐
+│   STAGING     │  │   STAGING       │  │   PRODUCTION      │
+│   Frontend    │  │   Backend       │  │   Frontend        │
+│   (Vercel)    │  │   (Railway)     │  │   (Vercel)        │
+│               │  │                 │  │                   │
+│ staging-*.    │  │ staging-api.    │  │ www.resume2       │
+│ vercel.app    │  │ railway.app     │  │ interview.com     │
+└───────────────┘  └─────────────────┘  └───────────────────┘
+                            │                     │
+                   ┌────────▼────────┐  ┌────────▼────────┐
+                   │  STAGING DB     │  │ PRODUCTION DB   │
+                   │  (PostgreSQL)   │  │ (PostgreSQL)    │
+                   │  Railway        │  │ Railway         │
+                   └─────────────────┘  └─────────────────┘
+                            │                     │
+                   ┌────────▼────────┐  ┌────────▼────────┐
+                   │ PRODUCTION      │  │ PRODUCTION API  │
+                   │ Backend         │  │ (Optional)      │
+                   │ (Railway)       │  │ api.resume2     │
+                   │                 │  │ interview.com   │
+                   │ prod-api.       │  └─────────────────┘
+                   │ railway.app     │
+                   └─────────────────┘
+```
+
+### Technology Stack
+
+- **Frontend**: React 19 + Vite 8 + TypeScript + Tailwind CSS v4 → Vercel
+- **Backend**: FastAPI + Python 3.13 + SQLAlchemy → Railway/Render
+- **Database**: PostgreSQL 16 → Railway Database
+- **AI**: OpenAI GPT-4o-mini API
 
 ---
 
-## Option 1: Deploy Frontend to Vercel + Backend to Railway (Recommended)
+## 🚀 Complete Multi-Environment Setup
+
+### Prerequisites
+
+- [ ] GitHub repository: `jaysibi/resume2interview` (✅ Done)
+- [ ] Domain purchased: `resume2interview.com` (Configure DNS)
+- [ ] Railway account (https://railway.app)
+- [ ] Vercel account (https://vercel.com)
+- [ ] OpenAI API key
+
+---
+
+## Option 1: Deploy Multi-Environment to Vercel + Railway (Recommended)
 
 ### Step 1: Deploy Backend to Railway
 

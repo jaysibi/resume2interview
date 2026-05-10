@@ -1,0 +1,214 @@
+export default function Home() {
+  return (
+    <main className="font-sans">
+
+      {/* HERO */}
+      <section className="py-20 px-6 max-w-7xl mx-auto grid md:grid-cols-2 gap-10 items-center">
+        <div>
+          <h1 className="text-4xl md:text-5xl font-bold leading-tight">
+            Get More Interview Calls in 7 Days
+          </h1>
+
+          <p className="mt-4 text-lg text-gray-600">
+            Your resume is being rejected by ATS before a recruiter even sees it.
+            We tailor your resume to match job descriptions and pass ATS filters.
+          </p>
+
+          <div className="mt-6 flex gap-4">
+            <button className="bg-blue-600 text-white px-6 py-3 rounded-xl">
+              Check My ATS Score (Free)
+            </button>
+
+            <button className="border px-6 py-3 rounded-xl">
+              Upload Resume & Job Description
+            </button>
+          </div>
+        </div>
+
+        <div>
+          {/* Add logo/illustration here */}
+        </div>
+      </section>
+
+      {/* PROBLEM */}
+      <section className="bg-gray-50 py-16 text-center">
+        <h2 className="text-3xl font-semibold">
+          Why You're Not Getting Interview Calls
+        </h2>
+
+        <div className="mt-8 max-w-3xl mx-auto text-left space-y-3 text-lg">
+          <p>❌ Using the same resume for every job</p>
+          <p>❌ Missing critical keywords from job descriptions</p>
+          <p>❌ Weak achievement statements</p>
+          <p>❌ ATS systems rejecting your resume silently</p>
+        </div>
+
+        <p className="mt-6 text-gray-600">
+          Most resumes never reach a human recruiter.
+        </p>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section className="py-16 max-w-6xl mx-auto text-center">
+        <h2 className="text-3xl font-semibold">How Resume Tailor Works</h2>
+
+        <div className="mt-10 grid md:grid-cols-4 gap-6">
+          {[
+            "Upload your resume",
+            "Paste job description",
+            "Get ATS score",
+            "We optimize your resume"
+          ].map((step, i) => (
+            <div key={i} className="p-6 border rounded-xl">
+              <p className="font-medium">{step}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* VALUE */}
+      <section className="bg-gray-50 py-16">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl font-semibold text-center">
+            What You Get
+          </h2>
+
+          <div className="mt-10 grid md:grid-cols-2 gap-6 text-lg">
+            <p>✅ ATS Match Score (0–100)</p>
+            <p>✅ Missing Keywords Report</p>
+            <p>✅ Rewritten Resume</p>
+            <p>✅ Achievement-focused bullets</p>
+            <p>✅ Recruiter-style feedback</p>
+            <p>✅ Built for IT professionals</p>
+          </div>
+        </div>
+      </section>
+
+      {/* BEFORE AFTER */}
+      <section className="py-16 max-w-5xl mx-auto text-center">
+        <h2 className="text-3xl font-semibold">Before vs After</h2>
+
+        <div className="mt-10 grid md:grid-cols-2 gap-6">
+          <div className="p-6 border rounded-xl">
+            <p className="text-gray-500">Before</p>
+            <p className="mt-2">
+              Worked on automation testing using Selenium
+            </p>
+          </div>
+
+          <div className="p-6 border rounded-xl bg-green-50">
+            <p className="text-green-600 font-medium">After</p>
+            <p className="mt-2">
+              Built Selenium-based automation framework reducing regression effort by 60%
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ATS FREE TOOL */}
+      <section className="bg-blue-50 py-16 text-center">
+        <h2 className="text-3xl font-semibold">
+          Get Your ATS Score — Free
+        </h2>
+
+        <p className="mt-4 text-gray-600">
+          Upload your resume and paste a job description
+        </p>
+
+        <div className="mt-8 max-w-xl mx-auto space-y-4">
+          <input type="file" className="w-full border p-3 rounded-xl" />
+
+          <textarea
+            placeholder="Paste job description here..."
+            className="w-full border p-3 rounded-xl"
+            rows={5}
+          />
+
+          <button className="w-full bg-blue-600 text-white py-3 rounded-xl">
+            Analyze Resume
+          </button>
+
+          <p className="text-sm text-green-600">
+            ✔ No credit card required
+          </p>
+        </div>
+      </section>
+
+      {/* FREE LIMITED TIME */}
+      <section className="py-16 max-w-5xl mx-auto text-center">
+
+        <h2 className="text-3xl font-semibold">
+          Free for a Limited Time
+        </h2>
+
+        <p className="mt-4 text-gray-600 max-w-2xl mx-auto">
+          We’re offering Resume Tailor completely free while we refine the product 
+          with early users. Get your ATS score and optimized resume at no cost.
+        </p>
+
+        <div className="mt-10 border rounded-2xl p-8 bg-blue-50">
+
+          <h3 className="text-xl font-semibold">
+            What You Get (Free Access)
+          </h3>
+
+          <div className="mt-6 grid md:grid-cols-2 gap-4 text-left text-lg">
+            <p>✅ ATS Match Score (0–100)</p>
+            <p>✅ Missing Keywords Report</p>
+            <p>✅ Resume Optimization</p>
+            <p>✅ Achievement Rewrites</p>
+            <p>✅ Recruiter Feedback</p>
+            <p>✅ Job-Specific Tailoring</p>
+          </div>
+
+          <button className="mt-8 bg-blue-600 text-white px-8 py-3 rounded-xl">
+            Get Free ATS Analysis
+          </button>
+
+        </div>
+
+        <p className="mt-6 text-sm text-gray-500">
+          ⚡ Limited-time early access. Pricing will be introduced soon.
+        </p>
+
+      </section>
+
+      {/* TRUST */}
+      <section className="bg-gray-50 py-16 text-center">
+        <h2 className="text-3xl font-semibold">
+          Built by IT Professionals
+        </h2>
+
+        <p className="mt-4 max-w-2xl mx-auto text-gray-600">
+          We understand ATS systems, recruiter behavior, and hiring patterns.
+          Focused on QA, Automation, and Software Engineering roles.
+        </p>
+      </section>
+
+      {/* TESTIMONIALS (COMMENTED OUT FOR NOW) */}
+      {/*
+      <section className="py-16 max-w-5xl mx-auto text-center">
+        <h2 className="text-3xl font-semibold">Results from Users</h2>
+
+        <div className="mt-8 space-y-4">
+          <p>“Increased interview calls within a week.”</p>
+          <p>“Resume finally started getting shortlisted.”</p>
+          <p>“Huge difference after rewrite.”</p>
+        </div>
+      </section>
+      */}
+
+      {/* FINAL CTA */}
+      <section className="bg-blue-600 text-white py-16 text-center">
+        <h2 className="text-3xl font-semibold">
+          Stop Getting Rejected by ATS
+        </h2>
+
+        <button className="mt-6 bg-white text-blue-600 px-6 py-3 rounded-xl">
+          Check Your ATS Score Now
+        </button>
+      </section>
+
+    </main>
+  );
+}
