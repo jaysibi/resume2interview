@@ -13,7 +13,7 @@ def test_root():
     """Test health check endpoint"""
     response = client.get("/")
     assert response.status_code == 200
-    assert "Resume Tailor API" in response.json()["message"]
+    assert "Resume2Interview API" in response.json()["message"]
 
 
 def test_upload_resume_docx():

@@ -9,6 +9,13 @@ RESUME TEXT:
 
 Extract the following information and return as valid JSON:
 
+0. **contact_info**: Contact information (extract if available, otherwise leave null)
+   - name: full name from resume
+   - email: email address (if present)
+   - phone: phone number (if present)
+   - current_title: current or most recent job title
+   - current_company: current or most recent company/employer
+
 1. **skills**: List of technical and soft skills
    - name: skill name
    - category: Programming Language | Framework | Tool | Database | Soft Skill | Other
@@ -28,15 +35,25 @@ Extract the following information and return as valid JSON:
    - gpa: if mentioned (optional)
 
 **Rules**:
+- Extract contact information from the header/top section of resume
+- For current_title and current_company, use the MOST RECENT position from experience
 - Extract ALL skills mentioned (technical and soft skills)
 - Include tools, frameworks, languages, methodologies
 - Infer proficiency from years of experience or context clues (if no clear indicator, use "Intermediate")
 - For experience, focus on measurable achievements
 - Return empty arrays if no information found in that category
+- Use null for contact fields if not found
 - Do NOT invent information - only extract what is explicitly stated or clearly implied
 
 Return ONLY valid JSON matching this exact structure:
 {{
+  "contact_info": {{
+    "name": "...",
+    "email": "...",
+    "phone": "...",
+    "current_title": "...",
+    "current_company": "..."
+  }},
   "skills": [
     {{"name": "...", "category": "...", "proficiency": "..."}}
   ],

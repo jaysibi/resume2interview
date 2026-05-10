@@ -404,6 +404,21 @@ export const api = {
   async getApplicationDetails(applicationId: number): Promise<ApplicationDetail> {
     return apiRequest(`/v2/applications/${applicationId}/`);
   },
+
+  // Delete a single application
+  async deleteApplication(applicationId: number): Promise<{ success: boolean; message: string }> {
+    return apiRequest(`/v2/applications/${applicationId}/`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Delete multiple applications
+  async deleteApplicationsBulk(applicationIds: number[]): Promise<{ success: boolean; deleted_count: number; message: string }> {
+    return apiRequest('/v2/applications/bulk-delete/', {
+      method: 'POST',
+      body: JSON.stringify(applicationIds),
+    });
+  },
 };
 
 export default api;

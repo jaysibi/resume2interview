@@ -22,6 +22,15 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     phone = Column(String(50), nullable=True)
     password_hash = Column(String(255), nullable=True)  # For future authentication
+    
+    # Contact and professional information extracted from resume
+    last_title = Column(String(255), nullable=True)  # Current/most recent job title
+    last_company = Column(String(255), nullable=True)  # Current/most recent company
+    job_applying_for = Column(String(255), nullable=True)  # Target job title
+    ats_summary_score = Column(Integer, nullable=True)  # Latest ATS score
+    missing_skills = Column(JSON, default=list, server_default='[]')  # Skills gap
+    last_analysis_date = Column(DateTime(timezone=True), nullable=True)  # Last resume analysis date
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
@@ -141,3 +150,27 @@ class ATSScore(Base):
     
     # Relationships
     application = relationship("Application", back_populates="ats_score")
+
+
+class UsageLog(Base):
+    """Usage tracking for rate limiting and analytics"""
+    __tablename__ = "usage_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    ip_address = Column(String(50), nullable=False, index=True)
+    user_agent = Column(Text, nullable=True)
+    endpoint = Column(String(255), nullable=False)
+    method = Column(String(10), nullable=False)
+    status_code = Column(Integer, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    rate_limited = Column(Integer, default=0)  # 1 if request was rate limited
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    
+    # Relationships
+    user = relationship("User")
+    
+    # Composite index for date-based queries
+    __table_args__ = (
+        Index('idx_ip_date', 'ip_address', 'created_at'),
+        Index('idx_date_endpoint', 'created_at', 'endpoint'),
+    )

@@ -3,7 +3,8 @@ import os
 import shutil
 import tempfile
 import logging
-from typing import Dict, Any, Optional
+from datetime import datetime, timezone
+from typing import Dict, Any, Optional, List
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -25,6 +26,8 @@ import crud_v2
 from job_scraper import fetch_jd_from_url
 from ai_service import get_ai_service
 from ai_models import AIServiceError
+from rate_limiter import rate_limiter
+from models_v2 import UsageLog
 
 # Configure logging
 logging.basicConfig(
@@ -43,7 +46,7 @@ ALLOWED_MIME_TYPES = {
 }
 
 app = FastAPI(
-    title="Resume Tailor API",
+    title="Resume2Interview API",
     description="AI-powered resume optimization engine.",
     version="1.0.0"
 )
@@ -85,6 +88,77 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Content-Security-Policy"] = (
         "default-src 'none'; frame-ancestors 'none'"
     )
+    return response
+
+# Daily rate limiting middleware
+@app.middleware("http")
+async def daily_rate_limit_middleware(request: Request, call_next):
+    """Apply daily rate limits to analysis endpoints"""
+    # Only apply to analysis endpoints
+    rate_limited_paths = ["/upload-resume/", "/gap-analysis/", "/ats-score/"]
+    
+    if any(request.url.path.startswith(path) for path in rate_limited_paths):
+        try:
+            await rate_limiter.check_rate_limit(request)
+        except HTTPException as e:
+            # Log rate limit event
+            db = SessionLocal()
+            try:
+                ip = rate_limiter.get_client_ip(request)
+                usage_log = UsageLog(
+                    ip_address=ip,
+                    user_agent=request.headers.get("user-agent"),
+                    endpoint=request.url.path,
+                    method=request.method,
+                    status_code=429,
+                    rate_limited=1
+                )
+                db.add(usage_log)
+                db.commit()
+            except Exception as log_error:
+                logger.error(f"Failed to log rate limit event: {log_error}")
+            finally:
+                db.close()
+            raise e
+    
+    response = await call_next(request)
+    
+    # Add rate limit headers if available
+    if hasattr(request.state, "rate_limit_info"):
+        info = request.state.rate_limit_info
+        response.headers["X-RateLimit-Limit"] = str(info["limit"])
+        response.headers["X-RateLimit-Remaining"] = str(info["remaining"])
+        response.headers["X-RateLimit-Used"] = str(info["used"])
+    
+    return response
+
+# Usage logging middleware
+@app.middleware("http")
+async def usage_logging_middleware(request: Request, call_next):
+    """Log all API requests for analytics"""
+    response = await call_next(request)
+    
+    # Log successful requests to analysis endpoints
+    rate_limited_paths = ["/upload-resume/", "/gap-analysis/", "/ats-score/"]
+    if any(request.url.path.startswith(path) for path in rate_limited_paths) and response.status_code < 400:
+        db = SessionLocal()
+        try:
+            ip = rate_limiter.get_client_ip(request)
+            usage_log = UsageLog(
+                ip_address=ip,
+                user_agent=request.headers.get("user-agent"),
+                endpoint=request.url.path,
+                method=request.method,
+                status_code=response.status_code,
+                rate_limited=0
+            )
+            db.add(usage_log)
+            db.commit()
+        except Exception as e:
+            logger.error(f"Failed to log usage: {e}")
+        finally:
+            db.close()
+    
     return response
 
 # Middleware for request/response logging - TEMPORARILY DISABLED FOR DEBUGGING
@@ -196,7 +270,7 @@ def validate_file_content(content: bytes, expected_ext: str, filename: str) -> N
 @limiter.limit("60/minute")
 def read_root(request: Request):
     """Health check endpoint"""
-    return {"message": "Resume Tailor API is running."}
+    return {"message": "Resume2Interview API is running."}
 
 
 @app.post("/test-simple/")
@@ -215,6 +289,7 @@ def _extract_resume_ai(resume_id: int, raw_text: str) -> None:
         logger.info(f"[BG] Extracting skills for resume {resume_id}")
         extracted_data = ai_service.extract_skills(raw_text)
 
+        # Update resume with extracted skills, experience, and education
         if extracted_data.skills:
             skills_list = [{"name": s.name, "category": s.category, "proficiency": s.proficiency} for s in extracted_data.skills]
             crud_v2.update_resume(db, resume_id, {"skills": skills_list})
@@ -229,6 +304,39 @@ def _extract_resume_ai(resume_id: int, raw_text: str) -> None:
             education_list = [e.model_dump() for e in extracted_data.education]
             crud_v2.update_resume(db, resume_id, {"education": education_list})
             logger.info(f"[BG] Updated {len(education_list)} education entries for resume {resume_id}")
+
+        # Update user table with extracted contact information
+        if extracted_data.contact_info:
+            resume = crud_v2.get_resume(db, resume_id)
+            if resume and resume.user_id:
+                user_updates = {}
+                contact = extracted_data.contact_info
+                
+                # Update name if provided and not already set
+                if contact.name:
+                    user_updates["name"] = contact.name
+                
+                # Update email if provided and different from current
+                if contact.email:
+                    user_updates["email"] = contact.email
+                
+                # Update phone if provided
+                if contact.phone:
+                    user_updates["phone"] = contact.phone
+                
+                # Update last title/company from most recent position
+                if contact.current_title:
+                    user_updates["last_title"] = contact.current_title
+                
+                if contact.current_company:
+                    user_updates["last_company"] = contact.current_company
+                
+                # Update user if there are any changes
+                if user_updates:
+                    # Add timestamp for when analysis was performed
+                    user_updates["last_analysis_date"] = datetime.now(timezone.utc)
+                    crud_v2.update_user(db, resume.user_id, user_updates)
+                    logger.info(f"[BG] Updated user {resume.user_id} with contact info: {list(user_updates.keys())}")
 
     except AIServiceError as e:
         logger.error(f"[BG] AI extraction failed for resume {resume_id}: {str(e)}")
@@ -674,6 +782,15 @@ def gap_analysis(
                 }
                 crud_v2.create_gap_analysis(db, application_id, gap_analysis_data)
                 logger.info(f"Stored gap analysis for application {application_id}")
+                
+                # Update user with missing skills
+                if resume.user_id:
+                    all_missing_skills = analysis.missing_required_skills + analysis.missing_preferred_skills
+                    user_updates = {
+                        "missing_skills": all_missing_skills
+                    }
+                    crud_v2.update_user(db, resume.user_id, user_updates)
+                    logger.info(f"Updated user {resume.user_id} with {len(all_missing_skills)} missing skills")
             
             response = {
                 "resume_id": resume_id,
@@ -758,6 +875,14 @@ async def ats_score(request: Request, resume_id: str, jd_id: str, db: Session = 
             )
             
             logger.info(f"ATS scoring complete: Score {scoring.ats_score}%")
+            
+            # Update user with ATS summary score
+            if resume.user_id:
+                user_updates = {
+                    "ats_summary_score": scoring.ats_score
+                }
+                crud_v2.update_user(db, resume.user_id, user_updates)
+                logger.info(f"Updated user {resume.user_id} with ATS score: {scoring.ats_score}")
             
             return {
                 "resume_id": resume_id,
@@ -1024,4 +1149,202 @@ async def get_application_details(
                 "An unexpected error occurred",
                 str(e)
             )
+        )
+
+
+@app.delete("/v2/applications/{application_id}/")
+async def delete_application(
+    application_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    V2: Delete a specific application.
+    
+    - **application_id**: ID of the application to delete
+    """
+    try:
+        success = crud_v2.delete_application(db, application_id)
+        
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=error_response("NOT_FOUND", f"Application {application_id} not found", None)
+            )
+        
+        return {
+            "success": True,
+            "message": f"Application {application_id} deleted successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error deleting application: {str(e)}")
+        logger.exception("Full traceback:")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_response(
+                "INTERNAL_SERVER_ERROR",
+                "An unexpected error occurred",
+                str(e)
+            )
+        )
+
+
+@app.post("/v2/applications/bulk-delete/")
+async def delete_applications_bulk(
+    application_ids: List[int],
+    db: Session = Depends(get_db)
+):
+    """
+    V2: Delete multiple applications at once.
+    
+    - **application_ids**: List of application IDs to delete
+    """
+    try:
+        if not application_ids:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_response("BAD_REQUEST", "No application IDs provided", None)
+            )
+        
+        deleted_count = crud_v2.delete_applications_bulk(db, application_ids)
+        
+        return {
+            "success": True,
+            "deleted_count": deleted_count,
+            "message": f"Successfully deleted {deleted_count} application(s)"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error bulk deleting applications: {str(e)}")
+        logger.exception("Full traceback:")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_response(
+                "INTERNAL_SERVER_ERROR",
+                "An unexpected error occurred",
+                str(e)
+            )
+        )
+
+
+# ===========================
+# Usage Analytics Endpoints
+# ===========================
+
+
+# ===========================
+# Usage Analytics Endpoints
+# ===========================
+
+@app.get("/api/analytics/usage-stats")
+async def get_usage_stats(db: Session = Depends(get_db)):
+    """
+    Get current usage statistics from in-memory rate limiter
+    Returns real-time counters for today
+    """
+    try:
+        stats = rate_limiter.get_usage_stats()
+        return {
+            "success": True,
+            "data": stats
+        }
+    except Exception as e:
+        logger.error(f"Error fetching usage stats: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_response("INTERNAL_SERVER_ERROR", "Failed to fetch usage statistics", str(e))
+        )
+
+
+@app.get("/api/analytics/usage-logs")
+async def get_usage_logs(
+    days: int = 7,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """
+    Get historical usage logs from database
+    
+    - **days**: Number of days to look back (default: 7)
+    - **limit**: Maximum number of records to return (default: 100)
+    """
+    try:
+        from datetime import datetime, timedelta
+        from sqlalchemy import and_, func as sql_func
+        
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        
+        # Get recent logs
+        logs = db.query(UsageLog).filter(
+            UsageLog.created_at >= cutoff_date
+        ).order_by(UsageLog.created_at.desc()).limit(limit).all()
+        
+        # Get aggregate stats
+        total_requests = db.query(sql_func.count(UsageLog.id)).filter(
+            UsageLog.created_at >= cutoff_date
+        ).scalar()
+        
+        rate_limited_count = db.query(sql_func.count(UsageLog.id)).filter(
+            and_(
+                UsageLog.created_at >= cutoff_date,
+                UsageLog.rate_limited == 1
+            )
+        ).scalar()
+        
+        unique_ips = db.query(sql_func.count(sql_func.distinct(UsageLog.ip_address))).filter(
+            UsageLog.created_at >= cutoff_date
+        ).scalar()
+        
+        # Top IPs
+        top_ips = db.query(
+            UsageLog.ip_address,
+            sql_func.count(UsageLog.id).label('count')
+        ).filter(
+            UsageLog.created_at >= cutoff_date
+        ).group_by(UsageLog.ip_address).order_by(
+            sql_func.count(UsageLog.id).desc()
+        ).limit(10).all()
+        
+        # Endpoint distribution
+        endpoint_stats = db.query(
+            UsageLog.endpoint,
+            sql_func.count(UsageLog.id).label('count')
+        ).filter(
+            UsageLog.created_at >= cutoff_date
+        ).group_by(UsageLog.endpoint).order_by(
+            sql_func.count(UsageLog.id).desc()
+        ).all()
+        
+        return {
+            "success": True,
+            "data": {
+                "period_days": days,
+                "total_requests": total_requests or 0,
+                "rate_limited_requests": rate_limited_count or 0,
+                "unique_ips": unique_ips or 0,
+                "top_ips": [{"ip": ip, "count": count} for ip, count in top_ips],
+                "endpoint_distribution": [{"endpoint": ep, "count": count} for ep, count in endpoint_stats],
+                "recent_logs": [
+                    {
+                        "id": log.id,
+                        "ip_address": log.ip_address,
+                        "endpoint": log.endpoint,
+                        "method": log.method,
+                        "status_code": log.status_code,
+                        "rate_limited": bool(log.rate_limited),
+                        "created_at": log.created_at.isoformat() if log.created_at else None
+                    }
+                    for log in logs
+                ]
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error fetching usage logs: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_response("INTERNAL_SERVER_ERROR", "Failed to fetch usage logs", str(e))
         )

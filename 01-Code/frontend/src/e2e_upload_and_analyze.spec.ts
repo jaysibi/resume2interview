@@ -5,13 +5,13 @@ import path from 'path';
 const resumePath = path.resolve('C:/Projects/ResumeTailor/03-Testing/Resume - Jayendra Sibi (1).docx');
 const jobUrl = 'https://www.naukri.com/job-listings-quality-analyst-charles-river-tata-consultancy-services-noida-chennai-bengaluru-8-to-10-years-210426031187?src=jobsearchDesk&sid=1777768086260882&xp=2&px=1';
 
-// Main E2E test for Resume Tailor V2 frontend
+// Main E2E test for Resume2Interview V2 frontend
 
-test.describe('Resume Tailor V2 E2E', () => {
+test.describe('Resume2Interview V2 E2E', () => {
   test('Upload resume, fetch JD from URL, analyze, and verify results', async ({ page }) => {
     // 1. Launch the application
     await page.goto('http://localhost:5173/');
-    await expect(page).toHaveTitle(/Resume Tailor|Upload/i);
+    await expect(page).toHaveTitle(/Resume2Interview|Upload/i);
 
     // 2. Upload the resume file
     const fileInput = await page.locator('input[type="file"]').first();

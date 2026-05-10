@@ -57,8 +57,18 @@ class Education(BaseModel):
     gpa: Optional[str] = Field(None, description="GPA if mentioned")
 
 
+class ContactInfo(BaseModel):
+    """Contact information extracted from resume"""
+    name: Optional[str] = Field(None, description="Full name")
+    email: Optional[str] = Field(None, description="Email address")
+    phone: Optional[str] = Field(None, description="Phone number")
+    current_title: Optional[str] = Field(None, description="Current or most recent job title")
+    current_company: Optional[str] = Field(None, description="Current or most recent company")
+
+
 class SkillExtractionResponse(BaseModel):
     """Complete response from skill extraction LLM call"""
+    contact_info: Optional[ContactInfo] = Field(None, description="Contact information")
     skills: List[Skill] = Field(default_factory=list)
     experience: List[Experience] = Field(default_factory=list)
     education: List[Education] = Field(default_factory=list)

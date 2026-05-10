@@ -60,6 +60,28 @@ def get_or_create_default_user(db: Session) -> User:
         user = create_user(db, name="Default User", email=default_email)
     return user
 
+def update_user(db: Session, user_id: int, updates: Dict[str, Any]) -> Optional[User]:
+    """Update user information with extracted data"""
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            logger.error(f"User {user_id} not found for update")
+            return None
+        
+        # Update only provided fields
+        for key, value in updates.items():
+            if hasattr(user, key):
+                setattr(user, key, value)
+        
+        db.commit()
+        db.refresh(user)
+        logger.info(f"Updated user {user_id} with fields: {list(updates.keys())}")
+        return user
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database error updating user {user_id}: {e}")
+        raise
+
 # ============= Resume CRUD Operations =============
 
 def create_resume(db: Session, user_id: int, filename: str, parsed: Dict[str, Any]) -> Resume:
@@ -231,6 +253,33 @@ def get_applications_by_user(db: Session, user_id: int, skip: int = 0, limit: in
             .order_by(Application.applied_at.desc()).offset(skip).limit(limit).all()
     except SQLAlchemyError as e:
         logger.error(f"Database error retrieving applications for user {user_id}: {e}")
+        raise
+
+def delete_application(db: Session, application_id: int) -> bool:
+    """Delete an application by ID"""
+    try:
+        application = db.query(Application).filter(Application.id == application_id).first()
+        if not application:
+            return False
+        db.delete(application)
+        db.commit()
+        logger.info(f"Deleted application with ID: {application_id}")
+        return True
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database error deleting application {application_id}: {e}")
+        raise
+
+def delete_applications_bulk(db: Session, application_ids: List[int]) -> int:
+    """Delete multiple applications by IDs. Returns count of deleted applications."""
+    try:
+        deleted_count = db.query(Application).filter(Application.id.in_(application_ids)).delete(synchronize_session=False)
+        db.commit()
+        logger.info(f"Deleted {deleted_count} applications")
+        return deleted_count
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database error bulk deleting applications: {e}")
         raise
 
 # ============= Gap Analysis CRUD Operations =============

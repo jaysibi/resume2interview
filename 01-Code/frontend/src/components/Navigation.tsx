@@ -50,58 +50,45 @@ export default function Navigation({
             to="/" 
             className="flex items-center space-x-3 group"
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-primary-700 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+            <div className="flex flex-col">
+              <span className="text-xl font-bold leading-tight">
+                <span className="text-gray-900">Resume</span>
+                <span className="text-blue-600">2</span>
+                <span className="text-gray-900">Interview</span>
+              </span>
+              <span className="text-xs text-gray-500 leading-tight">
+                Get more interview calls with<br />job-matched resumes
+              </span>
             </div>
-            <span className="text-2xl font-bold text-gray-900 group-hover:text-primary-600 transition-colors">
-              ResumeTailor
-            </span>
           </Link>
 
           {/* Desktop Navigation Links */}
           <div className="hidden md:flex items-center space-x-8">
             <Link
-              to="/"
-              className={`text-base font-medium transition-colors ${
-                isActive('/')
-                  ? 'text-primary-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              to="/features"
+              className="text-base font-medium text-gray-700 hover:text-blue-600 transition-colors"
             >
-              Home
+              Features
             </Link>
             <Link
-              to="/upload"
-              className={`text-base font-medium transition-colors ${
-                isActive('/upload')
-                  ? 'text-primary-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              to="/faq"
+              className="text-base font-medium text-gray-700 hover:text-blue-600 transition-colors"
             >
-              Upload
+              FAQ
             </Link>
             <Link
-              to="/applications"
-              className={`text-base font-medium transition-colors ${
-                isActive('/applications')
-                  ? 'text-primary-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              to="/blog"
+              className="text-base font-medium text-gray-700 hover:text-blue-600 transition-colors"
             >
-              Applications
+              Blog
             </Link>
 
-            {/* CTA Button */}
-            {showCTA && (
-              <Link
-                to={ctaLink}
-                className="btn-primary shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all"
-              >
-                {ctaText}
-              </Link>
-            )}
+            <Link
+              to="/upload"
+              className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm"
+            >
+              Get Started Free
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -137,6 +124,36 @@ export default function Navigation({
                 Home
               </Link>
               <Link
+                to="/features"
+                className={`text-base font-medium px-4 py-2 rounded-lg transition-colors ${
+                  isActive('/features')
+                    ? 'bg-primary-50 text-primary-600'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Features
+              </Link>
+              <Link
+                to="/faq"
+                className={`text-base font-medium px-4 py-2 rounded-lg transition-colors ${
+                  isActive('/faq')
+                    ? 'bg-primary-50 text-primary-600'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                FAQ
+              </Link>
+              <Link
+                to="/blog"
+                className={`text-base font-medium px-4 py-2 rounded-lg transition-colors ${
+                  isActive('/blog')
+                    ? 'bg-primary-50 text-primary-600'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Blog
+              </Link>
+              <Link
                 to="/upload"
                 className={`text-base font-medium px-4 py-2 rounded-lg transition-colors ${
                   isActive('/upload')
@@ -145,16 +162,6 @@ export default function Navigation({
                 }`}
               >
                 Upload
-              </Link>
-              <Link
-                to="/applications"
-                className={`text-base font-medium px-4 py-2 rounded-lg transition-colors ${
-                  isActive('/applications')
-                    ? 'bg-primary-50 text-primary-600'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Applications
               </Link>
               {showCTA && (
                 <Link

@@ -42,7 +42,7 @@ export default function Layout({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
-                  <span className="text-xl font-bold text-white">ResumeTailor</span>
+                  <span className="text-xl font-bold text-white">Resume2Interview</span>
                 </div>
                 <p className="text-sm text-gray-400">
                   AI-powered resume optimization for ATS success
@@ -81,7 +81,7 @@ export default function Layout({
 
             {/* Copyright */}
             <div className="border-t border-gray-800 pt-8 text-center text-sm text-gray-500">
-              <p>&copy; {new Date().getFullYear()} ResumeTailor. All rights reserved.</p>
+              <p>&copy; {new Date().getFullYear()} Resume2Interview. All rights reserved.</p>
             </div>
           </div>
         </footer>

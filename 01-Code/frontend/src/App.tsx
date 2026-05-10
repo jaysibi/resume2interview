@@ -5,6 +5,10 @@ import ResultsPage from './pages/ResultsPage';
 import ApplicationsPage from './pages/ApplicationsPage';
 import ApplicationDetailPage from './pages/ApplicationDetailPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import Features from './pages/Features';
+import FAQ from './pages/FAQ';
+import Blog from './pages/Blog';
+import Analytics from './pages/Analytics';
 
 function App() {
   return (
@@ -16,6 +20,10 @@ function App() {
         <Route path="/applications" element={<ApplicationsPage />} />
         <Route path="/applications/:id" element={<ApplicationDetailPage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/features" element={<Features />} />
+        <Route path="/faq" element={<FAQ />} />
+        <Route path="/blog" element={<Blog />} />
+        <Route path="/analytics" element={<Analytics />} />
       </Routes>
     </Router>
   );
