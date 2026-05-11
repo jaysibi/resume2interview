@@ -3,10 +3,15 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
 # Database connection string
-POSTGRES_URL = os.getenv(
+# Check DATABASE_URL first (Railway default), then POSTGRES_URL, then fallback to localhost
+POSTGRES_URL = os.getenv("DATABASE_URL") or os.getenv(
     "POSTGRES_URL",
     "postgresql+psycopg2://postgres:postgres@localhost:5432/resumetailor"
 )
+
+# Railway provides DATABASE_URL in postgres:// format, but SQLAlchemy needs postgresql://
+if POSTGRES_URL and POSTGRES_URL.startswith("postgres://"):
+    POSTGRES_URL = POSTGRES_URL.replace("postgres://", "postgresql://", 1)
 
 # Create engine with connection pooling configuration
 engine = create_engine(
