@@ -59,9 +59,6 @@ export default function Layout({
                   <li>
                     <a href="/upload" className="hover:text-white transition-colors">Upload Resume</a>
                   </li>
-                  <li>
-                    <a href="/applications" className="hover:text-white transition-colors">My Applications</a>
-                  </li>
                 </ul>
               </div>
 

@@ -30,28 +30,105 @@ interface HistoricalStats {
   recent_logs: UsageLog[];
 }
 
+interface ApplicationStats {
+  period_days: number;
+  total_applications: number;
+  unique_users: number;
+  avg_match_score: number;
+  avg_ats_score: number;
+  top_companies: { company: string; count: number }[];
+  top_job_titles: { title: string; count: number }[];
+  top_missing_skills: { skill: string; count: number }[];
+  daily_trend: { date: string; count: number }[];
+  score_distribution: {
+    "0-20": number;
+    "21-40": number;
+    "41-60": number;
+    "61-80": number;
+    "81-100": number;
+  };
+}
+
 export default function Analytics() {
+  const [password, setPassword] = useState<string>('');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [passwordInput, setPasswordInput] = useState<string>('');
+  const [authError, setAuthError] = useState<string>('');
+  
   const [currentStats, setCurrentStats] = useState<UsageStats | null>(null);
   const [historicalStats, setHistoricalStats] = useState<HistoricalStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [applicationStats, setApplicationStats] = useState<ApplicationStats | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Check for saved password on mount
   useEffect(() => {
-    fetchUsageData();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchUsageData, 30000);
-    return () => clearInterval(interval);
+    const savedPassword = sessionStorage.getItem('analytics_password');
+    if (savedPassword) {
+      setPassword(savedPassword);
+      setIsAuthenticated(true);
+    }
   }, []);
 
-  const fetchUsageData = async () => {
+  // Fetch data when authenticated
+  useEffect(() => {
+    if (isAuthenticated && password) {
+      fetchAllData();
+      // Refresh every 30 seconds
+      const interval = setInterval(fetchAllData, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, password]);
+
+  const handleLogin = () => {
+    if (!passwordInput.trim()) {
+      setAuthError('Please enter a password');
+      return;
+    }
+    
+    setPassword(passwordInput);
+    sessionStorage.setItem('analytics_password', passwordInput);
+    setIsAuthenticated(true);
+    setAuthError('');
+  };
+
+  const handleLogout = () => {
+    setPassword('');
+    setPasswordInput('');
+    setIsAuthenticated(false);
+    sessionStorage.removeItem('analytics_password');
+    setCurrentStats(null);
+    setHistoricalStats(null);
+    setApplicationStats(null);
+  };
+
+  const fetchAllData = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      // Fetch current day stats from rate limiter
-      const currentResponse = await fetch('/api/analytics/usage-stats');
+      const headers = {
+        'X-Analytics-Password': password
+      };
+
+      // Fetch all analytics data in parallel
+      const [currentResponse, historyResponse, appResponse] = await Promise.all([
+        fetch('/api/analytics/usage-stats', { headers }),
+        fetch('/api/analytics/usage-logs?days=7&limit=50', { headers }),
+        fetch('/api/analytics/application-stats?days=30', { headers })
+      ]);
+
+      // Check for authentication errors
+      if (currentResponse.status === 401 || historyResponse.status === 401 || appResponse.status === 401) {
+        setAuthError('Invalid password. Please try again.');
+        handleLogout();
+        setLoading(false);
+        return;
+      }
+
       const currentData = await currentResponse.json();
-      
-      // Fetch historical stats from database
-      const historyResponse = await fetch('/api/analytics/usage-logs?days=7&limit=50');
       const historyData = await historyResponse.json();
+      const appData = await appResponse.json();
       
       if (currentData.success) {
         setCurrentStats(currentData.data);
@@ -59,6 +136,10 @@ export default function Analytics() {
       
       if (historyData.success) {
         setHistoricalStats(historyData.data);
+      }
+
+      if (appData.success) {
+        setApplicationStats(appData.data);
       }
       
       setLoading(false);
@@ -68,7 +149,71 @@ export default function Analytics() {
     }
   };
 
-  if (loading) {
+  // Login screen
+  if (!isAuthenticated) {
+    return (
+      <Layout navigationVariant="solid">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-md w-full space-y-8">
+            <div>
+              <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                Analytics Dashboard
+              </h2>
+              <p className="mt-2 text-center text-sm text-gray-600">
+                Enter password to access analytics
+              </p>
+            </div>
+            <div className="mt-8 space-y-6">
+              <div className="rounded-md shadow-sm -space-y-px">
+                <div>
+                  <label htmlFor="password" className="sr-only">
+                    Password
+                  </label>
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                    placeholder="Enter analytics password"
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleLogin();
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              {authError && (
+                <div className="rounded-md bg-red-50 p-4">
+                  <div className="flex">
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-red-800">{authError}</h3>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <button
+                  onClick={handleLogin}
+                  className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Access Dashboard
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (loading && !currentStats && !applicationStats) {
     return (
       <Layout navigationVariant="solid">
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -88,7 +233,7 @@ export default function Analytics() {
           <div className="text-center">
             <p className="text-red-600 text-lg">{error}</p>
             <button
-              onClick={fetchUsageData}
+              onClick={fetchAllData}
               className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
             >
               Retry
@@ -104,15 +249,153 @@ export default function Analytics() {
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-6">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Usage Analytics</h1>
-            <p className="text-gray-600">Real-time and historical usage statistics</p>
+          <div className="mb-8 flex justify-between items-center">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">Analytics Dashboard</h1>
+              <p className="text-gray-600">Comprehensive usage and application statistics</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-medium"
+            >
+              Logout
+            </button>
           </div>
 
-          {/* Current Day Stats */}
+          {/* Application Analytics Section */}
+          {applicationStats && (
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Application Analytics (Last 30 Days)</h2>
+              
+              {/* Key Metrics */}
+              <div className="grid md:grid-cols-4 gap-6 mb-6">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <div className="text-sm font-medium text-gray-500 mb-2">Total Applications</div>
+                  <div className="text-3xl font-bold text-blue-600">{applicationStats.total_applications}</div>
+                </div>
+                
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <div className="text-sm font-medium text-gray-500 mb-2">Unique Users</div>
+                  <div className="text-3xl font-bold text-purple-600">{applicationStats.unique_users}</div>
+                </div>
+                
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <div className="text-sm font-medium text-gray-500 mb-2">Avg Match Score</div>
+                  <div className="text-3xl font-bold text-green-600">{applicationStats.avg_match_score}%</div>
+                </div>
+                
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <div className="text-sm font-medium text-gray-500 mb-2">Avg ATS Score</div>
+                  <div className="text-3xl font-bold text-orange-600">{applicationStats.avg_ats_score}%</div>
+                </div>
+              </div>
+
+              {/* Score Distribution */}
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Match Score Distribution</h3>
+                <div className="space-y-3">
+                  {Object.entries(applicationStats.score_distribution).map(([range, count]) => (
+                    <div key={range} className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">{range}</span>
+                      <div className="flex items-center gap-3 flex-1 ml-4">
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div
+                            className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full"
+                            style={{
+                              width: `${applicationStats.total_applications > 0 ? (count / applicationStats.total_applications) * 100 : 0}%`
+                            }}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900 w-12 text-right">{count}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Top Missing Skills */}
+              {applicationStats.top_missing_skills.length > 0 && (
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Most Common Missing Skills</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {applicationStats.top_missing_skills.slice(0, 12).map(({ skill, count }) => (
+                      <div key={skill} className="flex items-center justify-between bg-red-50 rounded-lg p-3">
+                        <span className="text-sm font-medium text-gray-900 capitalize">{skill}</span>
+                        <span className="text-xs font-bold text-red-600 bg-white px-2 py-1 rounded-full">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Top Companies and Job Titles */}
+              <div className="grid md:grid-cols-2 gap-6 mb-6">
+                {applicationStats.top_companies.length > 0 && (
+                  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Companies</h3>
+                    <div className="space-y-2">
+                      {applicationStats.top_companies.slice(0, 5).map(({ company, count }, index) => (
+                        <div key={company} className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
+                            <span className="text-sm text-gray-900">{company}</span>
+                          </div>
+                          <span className="text-sm font-semibold text-blue-600">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {applicationStats.top_job_titles.length > 0 && (
+                  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Job Titles</h3>
+                    <div className="space-y-2">
+                      {applicationStats.top_job_titles.slice(0, 5).map(({ title, count }, index) => (
+                        <div key={title} className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
+                            <span className="text-sm text-gray-900">{title}</span>
+                          </div>
+                          <span className="text-sm font-semibold text-blue-600">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Daily Trend */}
+              {applicationStats.daily_trend.length > 0 && (
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Daily Analysis Trend</h3>
+                  <div className="space-y-2">
+                    {applicationStats.daily_trend.slice(-14).map(({ date, count }) => (
+                      <div key={date} className="flex items-center justify-between">
+                        <span className="text-sm text-gray-700">{new Date(date).toLocaleDateString()}</span>
+                        <div className="flex items-center gap-3 flex-1 ml-4 max-w-md">
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full"
+                              style={{
+                                width: `${Math.max(10, (count / Math.max(...applicationStats.daily_trend.map(d => d.count))) * 100)}%`
+                              }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-semibold text-gray-900 w-8 text-right">{count}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* API Usage Section */}
           {currentStats && (
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Today's Activity</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">API Usage (Today)</h2>
               <div className="grid md:grid-cols-4 gap-6">
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
                   <div className="text-sm font-medium text-gray-500 mb-2">Total Requests</div>
@@ -135,31 +418,13 @@ export default function Analytics() {
                   <div className="text-xs text-gray-500 mt-1">per IP</div>
                 </div>
               </div>
-
-              {/* Top IPs Today */}
-              {currentStats.top_ips.length > 0 && (
-                <div className="mt-6 bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Top IPs Today</h3>
-                  <div className="space-y-3">
-                    {currentStats.top_ips.slice(0, 5).map(([ip, count], index) => (
-                      <div key={ip} className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
-                          <span className="font-mono text-sm text-gray-900">{ip}</span>
-                        </div>
-                        <span className="text-sm font-semibold text-blue-600">{count} requests</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
-          {/* Historical Stats */}
+          {/* Historical API Stats */}
           {historicalStats && (
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Last 7 Days</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">API Usage (Last 7 Days)</h2>
               <div className="grid md:grid-cols-3 gap-6 mb-6">
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
                   <div className="text-sm font-medium text-gray-500 mb-2">Total Requests</div>
@@ -177,14 +442,14 @@ export default function Analytics() {
                 </div>
                 
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                  <div className="text-sm font-medium text-gray-500 mb-2">Unique Users</div>
+                  <div className="text-sm font-medium text-gray-500 mb-2">Unique IPs</div>
                   <div className="text-3xl font-bold text-blue-600">{historicalStats.unique_ips}</div>
                 </div>
               </div>
 
               {/* Endpoint Distribution */}
               {historicalStats.endpoint_distribution.length > 0 && (
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-6">
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Endpoint Usage</h3>
                   <div className="space-y-3">
                     {historicalStats.endpoint_distribution.map(({ endpoint, count }) => (
@@ -203,55 +468,6 @@ export default function Analytics() {
                         </div>
                       </div>
                     ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Recent Activity Log */}
-              {historicalStats.recent_logs.length > 0 && (
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 border-b border-gray-200">
-                        <tr>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Time</th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-700">IP Address</th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Endpoint</th>
-                          <th className="text-center py-3 px-4 font-semibold text-gray-700">Status</th>
-                          <th className="text-center py-3 px-4 font-semibold text-gray-700">Rate Limited</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {historicalStats.recent_logs.slice(0, 20).map((log) => (
-                          <tr key={log.id} className="hover:bg-gray-50">
-                            <td className="py-3 px-4 text-gray-600">
-                              {new Date(log.created_at).toLocaleString()}
-                            </td>
-                            <td className="py-3 px-4 font-mono text-gray-900">{log.ip_address}</td>
-                            <td className="py-3 px-4 font-mono text-gray-700">{log.endpoint}</td>
-                            <td className="py-3 px-4 text-center">
-                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${
-                                log.status_code < 400
-                                  ? 'bg-green-100 text-green-800'
-                                  : log.status_code === 429
-                                  ? 'bg-orange-100 text-orange-800'
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
-                                {log.status_code}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              {log.rate_limited ? (
-                                <span className="text-red-600">✕</span>
-                              ) : (
-                                <span className="text-green-600">✓</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
                   </div>
                 </div>
               )}
