@@ -273,6 +273,68 @@ def read_root(request: Request):
     return {"message": "Resume2Interview API is running."}
 
 
+@app.get("/debug/db-config")
+def debug_db_config():
+    """Show database configuration for debugging Railway deployment"""
+    import db
+    from sqlalchemy import inspect, text
+    
+    # Get environment variables
+    database_url = os.getenv("DATABASE_URL", "NOT_SET")
+    postgres_url = os.getenv("POSTGRES_URL", "NOT_SET")
+    
+    # Mask password for security
+    def mask_password(url: str) -> str:
+        if url == "NOT_SET":
+            return url
+        try:
+            parts = url.split("@")
+            if len(parts) == 2:
+                user_pass = parts[0].split("//")[1]
+                if ":" in user_pass:
+                    user = user_pass.split(":")[0]
+                    return f"postgresql://{user}:***@{parts[1]}"
+            return url[:20] + "***"
+        except:
+            return "ERROR_PARSING_URL"
+    
+    # Check what's actually being used
+    actual_url = str(db.engine.url)
+    
+    # Check tables
+    try:
+        inspector = inspect(db.engine)
+        tables = inspector.get_table_names()
+        table_count = len(tables)
+    except Exception as e:
+        tables = []
+        table_count = f"ERROR: {str(e)}"
+    
+    # Try to query alembic_version
+    alembic_version = "N/A"
+    try:
+        with db.engine.connect() as conn:
+            result = conn.execute(text("SELECT version_num FROM alembic_version"))
+            version_row = result.fetchone()
+            if version_row:
+                alembic_version = version_row[0]
+    except Exception as e:
+        alembic_version = f"ERROR: {str(e)}"
+    
+    return {
+        "environment_variables": {
+            "DATABASE_URL": mask_password(database_url),
+            "POSTGRES_URL": mask_password(postgres_url),
+        },
+        "actual_connection": mask_password(actual_url),
+        "database": {
+            "table_count": table_count,
+            "tables": tables,
+            "alembic_version": alembic_version
+        }
+    }
+
+
 @app.post("/test-simple/")
 def test_simple():
     """Ultra simple test endpoint with no dependencies"""

@@ -19,8 +19,12 @@ from models import Resume, JobDescription
 config = context.config
 
 # Override sqlalchemy.url from environment variable if set
-postgres_url = os.getenv("POSTGRES_URL")
+# Check DATABASE_URL first (Railway default), then POSTGRES_URL
+postgres_url = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")
 if postgres_url:
+    # Railway provides postgres:// but SQLAlchemy needs postgresql://
+    if postgres_url.startswith("postgres://"):
+        postgres_url = postgres_url.replace("postgres://", "postgresql://", 1)
     config.set_main_option("sqlalchemy.url", postgres_url)
 
 # Interpret the config file for Python logging.
