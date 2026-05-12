@@ -111,11 +111,14 @@ export default function Analytics() {
         'X-Analytics-Password': password
       };
 
+      // Call Railway backend directly (Vercel free plan doesn't support external rewrites)
+      const backendUrl = 'https://graceful-exploration-staging.up.railway.app';
+      
       // Fetch all analytics data in parallel
       const [currentResponse, historyResponse, appResponse] = await Promise.all([
-        fetch('/api/analytics/usage-stats', { headers }),
-        fetch('/api/analytics/usage-logs?days=7&limit=50', { headers }),
-        fetch('/api/analytics/application-stats?days=30', { headers })
+        fetch(`${backendUrl}/api/analytics/usage-stats`, { headers }),
+        fetch(`${backendUrl}/api/analytics/usage-logs?days=7&limit=50`, { headers }),
+        fetch(`${backendUrl}/api/analytics/application-stats?days=30`, { headers })
       ]);
 
       // Check for authentication errors
