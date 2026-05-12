@@ -374,6 +374,34 @@ def debug_env_check():
     }
 
 
+@app.get("/debug/password-check")
+def debug_password_check(x_analytics_password: str = Header(None)):
+    """Debug endpoint to check password matching"""
+    expected = os.getenv("ANALYTICS_PASSWORD", "admin123")
+    received = x_analytics_password or "NOT_PROVIDED"
+    
+    return {
+        "expected_password": {
+            "length": len(expected),
+            "first_char": expected[0] if expected else None,
+            "last_char": expected[-1] if expected else None,
+            "value_hash": hash(expected)
+        },
+        "received_password": {
+            "provided": x_analytics_password is not None,
+            "length": len(received) if x_analytics_password else 0,
+            "first_char": received[0] if received and len(received) > 0 else None,
+            "last_char": received[-1] if received and len(received) > 0 else None,
+            "value_hash": hash(received) if x_analytics_password else None
+        },
+        "comparison": {
+            "match": x_analytics_password == expected if x_analytics_password else False,
+            "lengths_match": len(received) == len(expected) if x_analytics_password else False
+        },
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
 @app.post("/test-simple/")
 def test_simple():
     """Ultra simple test endpoint with no dependencies"""
