@@ -38,8 +38,8 @@ In Railway Dashboard → Backend Service → Variables:
 | Variable Name | Value | Required? |
 |---------------|-------|-----------|
 | `OPENAI_API_KEY` | `sk-proj-YOUR_KEY_HERE` | ✅ Yes (for resume analysis) |
-| `CORS_ORIGINS` | `https://your-frontend.vercel.app,http://localhost:5173` | ✅ Yes |
-| `ANALYTICS_PASSWORD` | `admin123` (or custom) | ⚠️ Optional (defaults to admin123) |
+| `CORS_ORIGINS` | `https://your-frontend.vercel.app,http://localhost:5173` | ✅ Yes (for frontend access) |
+| `ANALYTICS_PASSWORD` | Your custom password | ✅ Yes (for analytics dashboard) |
 
 **Note:** `DATABASE_URL` is automatically provided by Railway when you connect the PostgreSQL service (step 3).
 
@@ -47,15 +47,10 @@ In Railway Dashboard → Backend Service → Variables:
 
 ## 🔧 Configuration Files
 
-### **railway.toml** (Already in project root)
-This file automatically configures:
-- Build process
-- Start command
-- Health check
-- Non-sensitive defaults (CORS for localhost, ANALYTICS_PASSWORD)
-
 ### **.env.example** (In backend folder)
 Documents all environment variables needed for local development.
+
+**Important:** Railway uses auto-detection to deploy the backend. No railway.toml is needed.
 
 ---
 
