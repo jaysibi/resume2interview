@@ -335,6 +335,45 @@ def debug_db_config():
     }
 
 
+@app.get("/debug/env-check")
+def debug_env_check():
+    """Check all critical environment variables"""
+    def mask_value(key: str, value: str) -> str:
+        if value == "NOT_SET":
+            return value
+        # Mask sensitive values
+        if any(x in key.upper() for x in ["PASSWORD", "KEY", "SECRET", "TOKEN", "URL"]):
+            if len(value) > 10:
+                return f"{value[:8]}***{value[-4:]}"
+            return "***"
+        return value
+    
+    critical_vars = [
+        "DATABASE_URL",
+        "POSTGRES_URL", 
+        "CORS_ORIGINS",
+        "ANALYTICS_PASSWORD",
+        "OPENAI_API_KEY",
+        "PORT",
+        "RAILWAY_ENVIRONMENT"
+    ]
+    
+    env_status = {}
+    for var in critical_vars:
+        value = os.getenv(var, "NOT_SET")
+        env_status[var] = {
+            "set": value != "NOT_SET",
+            "value": mask_value(var, value),
+            "length": len(value) if value != "NOT_SET" else 0
+        }
+    
+    return {
+        "variables": env_status,
+        "all_env_count": len(os.environ),
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
 @app.post("/test-simple/")
 def test_simple():
     """Ultra simple test endpoint with no dependencies"""
