@@ -25,7 +25,7 @@ export default function ResultsPage() {
       try {
         setIsLoading(true);
         const [gapData, atsData] = await Promise.all([
-          api.getGapAnalysis(resumeId, jdId),
+          api.getGapAnalysis(resumeId, jdId, undefined, true), // Enable application tracking
           api.getATSScore(resumeId, jdId),
         ]);
         setGapAnalysis(gapData);
