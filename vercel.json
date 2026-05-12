@@ -1,0 +1,28 @@
+{
+  "buildCommand": "cd 01-Code/frontend && npm run build",
+  "outputDirectory": "01-Code/frontend/dist",
+  "devCommand": "cd 01-Code/frontend && npm run dev",
+  "installCommand": "cd 01-Code/frontend && npm install",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://graceful-exploration-staging.up.railway.app/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ]
+}
