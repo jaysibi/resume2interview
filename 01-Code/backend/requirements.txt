@@ -28,6 +28,10 @@ pydantic-settings==2.1.0
 pytest==7.4.4
 httpx==0.26.0
 
+# Excel export
+pandas==2.1.4
+openpyxl==3.1.2
+
 # Future: AI/ML (when implemented)
 # openai==1.10.0
 # langchain==0.1.0

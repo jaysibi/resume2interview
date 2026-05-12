@@ -1652,3 +1652,130 @@ async def get_application_stats(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_response("INTERNAL_SERVER_ERROR", "Failed to fetch application statistics", str(e))
         )
+
+
+@app.get("/api/analytics/export-applications", dependencies=[Depends(verify_analytics_password)])
+async def export_applications_to_excel(
+    days: int = 30,
+    db: Session = Depends(get_db)
+):
+    """
+    Export application data to Excel file
+    
+    - **days**: Number of days to look back (default: 30, use 0 for all data)
+    
+    Returns an Excel file with columns:
+    - User Name
+    - User Email
+    - Resume Filename
+    - Company
+    - Job Title
+    - Match Score
+    - ATS Score
+    - Applied Date
+    """
+    try:
+        from datetime import datetime, timedelta
+        from sqlalchemy import and_
+        from models_v2 import Application, GapAnalysis, ATSScore, JobDescription, Resume, User
+        import pandas as pd
+        from io import BytesIO
+        from fastapi.responses import StreamingResponse
+        
+        # Build query
+        query = db.query(
+            User.name.label('user_name'),
+            User.email.label('user_email'),
+            Resume.filename.label('resume_filename'),
+            JobDescription.company.label('company'),
+            JobDescription.title.label('job_title'),
+            GapAnalysis.match_score.label('match_score'),
+            ATSScore.ats_score.label('ats_score'),
+            Application.applied_at.label('applied_date')
+        ).join(
+            User, Application.user_id == User.id
+        ).join(
+            Resume, Application.resume_id == Resume.id
+        ).join(
+            JobDescription, Application.jd_id == JobDescription.id
+        ).outerjoin(
+            GapAnalysis, Application.id == GapAnalysis.application_id
+        ).outerjoin(
+            ATSScore, Application.id == ATSScore.application_id
+        )
+        
+        # Apply date filter if specified
+        if days > 0:
+            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            query = query.filter(Application.applied_at >= cutoff_date)
+        
+        # Order by most recent first
+        query = query.order_by(Application.applied_at.desc())
+        
+        # Fetch all results
+        results = query.all()
+        
+        if not results:
+            # Return empty Excel file with headers
+            df = pd.DataFrame(columns=[
+                'User Name', 'User Email', 'Resume Filename', 
+                'Company', 'Job Title', 'Match Score (%)', 
+                'ATS Score (%)', 'Applied Date'
+            ])
+        else:
+            # Convert to DataFrame
+            df = pd.DataFrame([
+                {
+                    'User Name': row.user_name,
+                    'User Email': row.user_email,
+                    'Resume Filename': row.resume_filename,
+                    'Company': row.company or 'N/A',
+                    'Job Title': row.job_title or 'N/A',
+                    'Match Score (%)': row.match_score if row.match_score is not None else 'N/A',
+                    'ATS Score (%)': row.ats_score if row.ats_score is not None else 'N/A',
+                    'Applied Date': row.applied_date.strftime('%Y-%m-%d %H:%M:%S') if row.applied_date else 'N/A'
+                }
+                for row in results
+            ])
+        
+        # Create Excel file in memory
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Applications', index=False)
+            
+            # Auto-adjust column widths
+            worksheet = writer.sheets['Applications']
+            for idx, col in enumerate(df.columns):
+                max_length = max(
+                    df[col].astype(str).apply(len).max(),
+                    len(col)
+                ) + 2
+                worksheet.column_dimensions[chr(65 + idx)].width = min(max_length, 50)
+        
+        output.seek(0)
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"applications_export_{timestamp}.xlsx"
+        
+        logger.info(f"Exported {len(results)} applications to Excel")
+        
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except ImportError as e:
+        logger.error(f"Missing required library for Excel export: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_response("DEPENDENCY_ERROR", "Excel export libraries not installed", str(e))
+        )
+    except Exception as e:
+        logger.error(f"Error exporting applications to Excel: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_response("INTERNAL_SERVER_ERROR", "Failed to export applications", str(e))
+        )
+

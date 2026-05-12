@@ -152,6 +152,52 @@ export default function Analytics() {
     }
   };
 
+  const handleExportToExcel = async () => {
+    try {
+      const headers = {
+        'X-Analytics-Password': password
+      };
+
+      const backendUrl = 'https://graceful-exploration-staging.up.railway.app';
+      const response = await fetch(`${backendUrl}/api/analytics/export-applications?days=30`, {
+        headers
+      });
+
+      if (response.status === 401) {
+        setAuthError('Invalid password. Please try again.');
+        handleLogout();
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      // Get the filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'applications_export.xlsx';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Convert response to blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      setError('Failed to export data to Excel');
+    }
+  };
+
   // Login screen
   if (!isAuthenticated) {
     return (
@@ -268,7 +314,18 @@ export default function Analytics() {
           {/* Application Analytics Section */}
           {applicationStats && (
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Application Analytics (Last 30 Days)</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-900">Application Analytics (Last 30 Days)</h2>
+                <button
+                  onClick={handleExportToExcel}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Export to Excel
+                </button>
+              </div>
               
               {/* Key Metrics */}
               <div className="grid md:grid-cols-4 gap-6 mb-6">
