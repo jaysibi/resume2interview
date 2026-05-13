@@ -49,49 +49,101 @@ def upgrade():
         VALUES ('Default User', 'default@resumetailor.local', now(), now())
     """)
     
-    # 2. Add new columns to resumes table (check if they exist first)
-    # Note: tools column already exists in V1, so we skip it
+    # 2. Create or modify resumes table
+    # Check if table exists (V1 upgrade) or needs to be created (fresh install)
     conn = op.get_bind()
     inspector = sa.inspect(conn)
-    existing_columns = [c['name'] for c in inspector.get_columns('resumes')]
+    has_resumes_table = inspector.has_table('resumes')
     
-    if 'user_id' not in existing_columns:
-        op.add_column('resumes', sa.Column('user_id', sa.Integer(), nullable=True))
-    if 'upload_date' not in existing_columns:
-        op.add_column('resumes', sa.Column('upload_date', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True))
-    # tools column already exists in V1, skip it
+    if not has_resumes_table:
+        # Fresh install - create resumes table from scratch with V2 schema
+        op.create_table(
+            'resumes',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('public_id', sa.String(length=36), nullable=False),
+            sa.Column('user_id', sa.Integer(), nullable=False),
+            sa.Column('filename', sa.String(length=255), nullable=False),
+            sa.Column('raw_text', sa.Text(), nullable=False),
+            sa.Column('skills', postgresql.JSON(astext_type=sa.Text()), server_default='[]', nullable=True),
+            sa.Column('experience', postgresql.JSON(astext_type=sa.Text()), server_default='[]', nullable=True),
+            sa.Column('education', postgresql.JSON(astext_type=sa.Text()), server_default='[]', nullable=True),
+            sa.Column('tools', postgresql.JSON(astext_type=sa.Text()), server_default='[]', nullable=True),
+            sa.Column('upload_date', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+            sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+            sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+            sa.PrimaryKeyConstraint('id')
+        )
+        op.create_index(op.f('ix_resumes_id'), 'resumes', ['id'], unique=False)
+        op.create_index(op.f('ix_resumes_public_id'), 'resumes', ['public_id'], unique=True)
+        op.create_index(op.f('ix_resumes_user_id'), 'resumes', ['user_id'], unique=False)
+    else:
+        # V1 upgrade - add new columns to existing resumes table
+        existing_columns = [c['name'] for c in inspector.get_columns('resumes')]
+        
+        if 'user_id' not in existing_columns:
+            op.add_column('resumes', sa.Column('user_id', sa.Integer(), nullable=True))
+        if 'upload_date' not in existing_columns:
+            op.add_column('resumes', sa.Column('upload_date', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True))
+        # tools column already exists in V1, skip it
+        
+        # Set user_id for existing resumes to default user (id=1)
+        op.execute("UPDATE resumes SET user_id = 1 WHERE user_id IS NULL")
+        op.execute("UPDATE resumes SET upload_date = created_at WHERE upload_date IS NULL AND created_at IS NOT NULL")
+        
+        # Make user_id NOT NULL and add foreign key
+        op.alter_column('resumes', 'user_id', nullable=False)
+        op.create_foreign_key('fk_resumes_user_id', 'resumes', 'users', ['user_id'], ['id'], ondelete='CASCADE')
+        op.create_index(op.f('ix_resumes_user_id'), 'resumes', ['user_id'], unique=False)
     
-    # Set user_id for existing resumes to default user (id=1)
-    op.execute("UPDATE resumes SET user_id = 1 WHERE user_id IS NULL")
-    op.execute("UPDATE resumes SET upload_date = created_at WHERE upload_date IS NULL AND created_at IS NOT NULL")
+    # 3. Create or modify job_descriptions table
+    has_jd_table = inspector.has_table('job_descriptions')
     
-    # Make user_id NOT NULL and add foreign key
-    op.alter_column('resumes', 'user_id', nullable=False)
-    op.create_foreign_key('fk_resumes_user_id', 'resumes', 'users', ['user_id'], ['id'], ondelete='CASCADE')
-    op.create_index(op.f('ix_resumes_user_id'), 'resumes', ['user_id'], unique=False)
-    
-    # 3. Add new columns to job_descriptions table (check if they exist first)
-    existing_jd_columns = [c['name'] for c in inspector.get_columns('job_descriptions')]
-    
-    if 'user_id' not in existing_jd_columns:
-        op.add_column('job_descriptions', sa.Column('user_id', sa.Integer(), nullable=True))
-    if 'job_url' not in existing_jd_columns:
-        op.add_column('job_descriptions', sa.Column('job_url', sa.String(length=1000), nullable=True))
-    if 'title' not in existing_jd_columns:
-        op.add_column('job_descriptions', sa.Column('title', sa.String(length=500), nullable=True))
-    if 'company' not in existing_jd_columns:
-        op.add_column('job_descriptions', sa.Column('company', sa.String(length=500), nullable=True))
-    if 'upload_date' not in existing_jd_columns:
-        op.add_column('job_descriptions', sa.Column('upload_date', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True))
-    
-    # Set user_id for existing job_descriptions to default user (id=1)
-    op.execute("UPDATE job_descriptions SET user_id = 1 WHERE user_id IS NULL")
-    op.execute("UPDATE job_descriptions SET upload_date = created_at WHERE upload_date IS NULL AND created_at IS NOT NULL")
-    
-    # Make user_id NOT NULL and add foreign key
-    op.alter_column('job_descriptions', 'user_id', nullable=False)
-    op.create_foreign_key('fk_job_descriptions_user_id', 'job_descriptions', 'users', ['user_id'], ['id'], ondelete='CASCADE')
-    op.create_index(op.f('ix_job_descriptions_user_id'), 'job_descriptions', ['user_id'], unique=False)
+    if not has_jd_table:
+        # Fresh install - create job_descriptions table from scratch with V2 schema
+        op.create_table(
+            'job_descriptions',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('public_id', sa.String(length=36), nullable=False),
+            sa.Column('user_id', sa.Integer(), nullable=False),
+            sa.Column('filename', sa.String(length=255), nullable=True),
+            sa.Column('job_url', sa.String(length=1000), nullable=True),
+            sa.Column('raw_text', sa.Text(), nullable=False),
+            sa.Column('title', sa.String(length=500), nullable=True),
+            sa.Column('company', sa.String(length=500), nullable=True),
+            sa.Column('mandatory_skills', postgresql.JSON(astext_type=sa.Text()), server_default='[]', nullable=True),
+            sa.Column('preferred_skills', postgresql.JSON(astext_type=sa.Text()), server_default='[]', nullable=True),
+            sa.Column('keywords', postgresql.JSON(astext_type=sa.Text()), server_default='[]', nullable=True),
+            sa.Column('upload_date', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+            sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+            sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+            sa.PrimaryKeyConstraint('id')
+        )
+        op.create_index(op.f('ix_job_descriptions_id'), 'job_descriptions', ['id'], unique=False)
+        op.create_index(op.f('ix_job_descriptions_public_id'), 'job_descriptions', ['public_id'], unique=True)
+        op.create_index(op.f('ix_job_descriptions_user_id'), 'job_descriptions', ['user_id'], unique=False)
+    else:
+        # V1 upgrade - add new columns to existing job_descriptions table
+        existing_jd_columns = [c['name'] for c in inspector.get_columns('job_descriptions')]
+        
+        if 'user_id' not in existing_jd_columns:
+            op.add_column('job_descriptions', sa.Column('user_id', sa.Integer(), nullable=True))
+        if 'job_url' not in existing_jd_columns:
+            op.add_column('job_descriptions', sa.Column('job_url', sa.String(length=1000), nullable=True))
+        if 'title' not in existing_jd_columns:
+            op.add_column('job_descriptions', sa.Column('title', sa.String(length=500), nullable=True))
+        if 'company' not in existing_jd_columns:
+            op.add_column('job_descriptions', sa.Column('company', sa.String(length=500), nullable=True))
+        if 'upload_date' not in existing_jd_columns:
+            op.add_column('job_descriptions', sa.Column('upload_date', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True))
+        
+        # Set user_id for existing job_descriptions to default user (id=1)
+        op.execute("UPDATE job_descriptions SET user_id = 1 WHERE user_id IS NULL")
+        op.execute("UPDATE job_descriptions SET upload_date = created_at WHERE upload_date IS NULL AND created_at IS NOT NULL")
+        
+        # Make user_id NOT NULL and add foreign key
+        op.alter_column('job_descriptions', 'user_id', nullable=False)
+        op.create_foreign_key('fk_job_descriptions_user_id', 'job_descriptions', 'users', ['user_id'], ['id'], ondelete='CASCADE')
+        op.create_index(op.f('ix_job_descriptions_user_id'), 'job_descriptions', ['user_id'], unique=False)
     
     # 4. Create applications table
     op.create_table(
