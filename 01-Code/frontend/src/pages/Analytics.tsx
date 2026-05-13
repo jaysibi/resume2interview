@@ -158,7 +158,7 @@ export default function Analytics() {
         'X-Analytics-Password': password
       };
 
-      const backendUrl = 'https://graceful-exploration-staging.up.railway.app';
+      const backendUrl = 'https://resume2interview-production.up.railway.app';
       const response = await fetch(`${backendUrl}/api/analytics/export-applications?days=30`, {
         headers
       });
