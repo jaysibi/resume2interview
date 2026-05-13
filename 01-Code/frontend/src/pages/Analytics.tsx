@@ -112,7 +112,7 @@ export default function Analytics() {
       };
 
       // Call Railway backend directly (Vercel free plan doesn't support external rewrites)
-      const backendUrl = 'https://graceful-exploration-staging.up.railway.app';
+      const backendUrl = 'https://resume2interview-production.up.railway.app';
       
       // Fetch all analytics data in parallel
       const [currentResponse, historyResponse, appResponse] = await Promise.all([
