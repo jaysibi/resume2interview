@@ -869,12 +869,12 @@ def gap_analysis(
             if not user:
                 user = crud_v2.get_or_create_default_user(db)
                 
-            # Create application record
+            # Create application record (use internal integer IDs, not UUIDs)
             application = crud_v2.create_application(
                 db, 
                 user_id=user.id, 
-                resume_id=resume_id, 
-                jd_id=jd_id,
+                resume_id=resume.id,  # Internal integer ID
+                jd_id=jd.id,          # Internal integer ID
                 status="analyzed"
             )
             application_id = application.id
