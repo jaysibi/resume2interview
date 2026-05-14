@@ -119,14 +119,15 @@ class InMemoryRateLimiter:
         is_allowed, current_count, remaining = self.check_limit(ip)
         
         if not is_allowed:
+            reset_time = self._get_next_reset_time()
             raise HTTPException(
                 status_code=429,
                 detail={
                     "error": "rate_limit_exceeded",
-                    "message": "You've reached today's free analysis limit. Try Again Tomorrow",
+                    "message": f"You have reached your daily limit of {self.daily_limit} analyses. Please try again after 24 hours (resets at {reset_time}).",
                     "limit": self.daily_limit,
                     "current": current_count,
-                    "reset_at": self._get_next_reset_time()
+                    "reset_at": reset_time
                 }
             )
         

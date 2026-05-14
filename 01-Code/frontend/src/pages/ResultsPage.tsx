@@ -56,15 +56,23 @@ export default function ResultsPage() {
 
   // Error state
   if (error) {
+    // Check if this is a rate limit error
+    const isRateLimitError = error.toLowerCase().includes('daily limit') || 
+                             error.toLowerCase().includes('rate limit');
+    
     return (
       <Layout>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="card max-w-md">
-            <div className="text-red-600 text-5xl mb-4">⚠️</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
-            <p className="text-gray-600 mb-4">{error}</p>
+          <div className="card max-w-md text-center">
+            <div className={`text-5xl mb-4 ${isRateLimitError ? 'text-yellow-600' : 'text-red-600'}`}>
+              {isRateLimitError ? '⏳' : '⚠️'}
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              {isRateLimitError ? 'Daily Limit Reached' : 'Error'}
+            </h2>
+            <p className="text-gray-600 mb-6 whitespace-pre-line">{error}</p>
             <Link to="/upload" className="btn-primary">
-              Try Again
+              {isRateLimitError ? 'Back to Upload' : 'Try Again'}
             </Link>
           </div>
         </div>
