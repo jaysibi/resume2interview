@@ -150,5 +150,4 @@ class InMemoryRateLimiter:
 
 
 # Global rate limiter instance
-# Increased limit for production testing/launch period
-rate_limiter = InMemoryRateLimiter(daily_limit=100)
+rate_limiter = InMemoryRateLimiter(daily_limit=7)
