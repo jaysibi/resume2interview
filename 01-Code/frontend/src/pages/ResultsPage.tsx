@@ -3,6 +3,14 @@ import { useSearchParams, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../services/api';
 import type { GapAnalysisResponse, ATSScoreResponse } from '../types';
+import { 
+  trackGapAnalysisRequest, 
+  trackGapAnalysisComplete, 
+  trackATSScoreRequest, 
+  trackATSScoreComplete,
+  trackError,
+  trackRateLimitHit
+} from '../services/analytics';
 
 export default function ResultsPage() {
   const [searchParams] = useSearchParams();
@@ -24,14 +32,42 @@ export default function ResultsPage() {
     const fetchAnalysis = async () => {
       try {
         setIsLoading(true);
+        
+        // Track analysis request
+        trackGapAnalysisRequest(resumeId, jdId);
+        trackATSScoreRequest(resumeId, jdId);
+        
         const [gapData, atsData] = await Promise.all([
           api.getGapAnalysis(resumeId, jdId, undefined, true), // Enable application tracking
           api.getATSScore(resumeId, jdId),
         ]);
+        
         setGapAnalysis(gapData);
         setATSScore(atsData);
+        
+        // Track successful completion
+        trackGapAnalysisComplete(
+          gapData.match_percentage,
+          gapData.missing_skills?.length || 0,
+          gapData.recommendations?.length || 0
+        );
+        trackATSScoreComplete(
+          atsData.ats_score,
+          atsData.keyword_match_percentage,
+          atsData.format_score
+        );
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch analysis');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch analysis';
+        setError(errorMessage);
+        
+        // Track error with rate limit detection
+        if (errorMessage.toLowerCase().includes('daily limit') || 
+            errorMessage.toLowerCase().includes('rate limit')) {
+          // Try to extract rate limit info from error (if available in error object)
+          trackRateLimitHit(7, 7, 'unknown'); // Fallback values
+        } else {
+          trackError('analysis_failed', errorMessage, 'ResultsPage');
+        }
       } finally {
         setIsLoading(false);
       }
