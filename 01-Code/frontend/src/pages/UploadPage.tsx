@@ -102,6 +102,12 @@ export default function UploadPage() {
         jobTitle || undefined, 
         company || undefined
       );
+      setJDId(response.id);
+      setJDProgress({ 
+        progress: 100, 
+        status: 'success',
+        message: 'Job description uploaded successfully' 
+      });
       
       // Track successful upload
       trackJobDescriptionUpload(jdFile.name, jdFile.size, !!jobUrl);
@@ -118,13 +124,7 @@ export default function UploadPage() {
       }
       
       // Track error
-      trackError('jd_upload_failed', errorMessage, 'UploadPage');f (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error && typeof error === 'object') {
-        errorMessage = JSON.stringify(error);
-      }
+      trackError('jd_upload_failed', errorMessage, 'UploadPage');
       
       setJDProgress({
         progress: 0,
@@ -155,15 +155,15 @@ export default function UploadPage() {
         company || undefined
       );
       
-      
-      // Track successful upload (text mode)
-      trackJobDescriptionUpload(filename, jdText.length, !!jobUrl);
       setJDId(response.id);
       setJDProgress({ 
         progress: 100, 
         status: 'success',
         message: 'Job description uploaded successfully' 
       });
+      
+      // Track successful upload (text mode)
+      trackJobDescriptionUpload(filename, jdText.length, !!jobUrl);
     } catch (error) {
       console.error('JD upload error:', error);
       let errorMessage = 'Upload failed';
@@ -175,6 +175,9 @@ export default function UploadPage() {
       } else if (error && typeof error === 'object') {
         errorMessage = JSON.stringify(error);
       }
+      
+      // Track error
+      trackError('jd_text_upload_failed', errorMessage, 'UploadPage');
       
       setJDProgress({
         progress: 0,
