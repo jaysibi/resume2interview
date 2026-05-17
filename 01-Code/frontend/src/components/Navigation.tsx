@@ -53,7 +53,7 @@ export default function Navigation({
             <img 
               src="/logo.png" 
               alt="Resume2Interview - Get more interview calls" 
-              className="h-10 md:h-12 w-auto"
+              className="h-auto w-72 md:w-[480px]"
             />
           </Link>
 
