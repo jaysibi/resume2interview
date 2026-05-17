@@ -44,17 +44,22 @@ export default function Navigation({
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${baseClasses}`}>
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between py-3">
+        <div className="flex items-center justify-between h-20">
           {/* Logo / Brand */}
           <Link 
             to="/" 
-            className="flex items-center group py-2"
+            className="flex items-center space-x-3 group"
           >
-            <img 
-              src="/logo.png" 
-              alt="Resume2Interview - Get more interview calls" 
-              className="h-12 md:h-14 w-auto"
-            />
+            <div className="flex flex-col">
+              <span className="text-xl font-bold leading-tight">
+                <span className="text-gray-900">Resume</span>
+                <span className="text-blue-600">2</span>
+                <span className="text-gray-900">Interview</span>
+              </span>
+              <span className="text-xs text-gray-500 leading-tight">
+                Get more interview calls with<br />job-matched resumes
+              </span>
+            </div>
           </Link>
 
           {/* Desktop Navigation Links */}
