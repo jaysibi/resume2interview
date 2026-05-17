@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import api from '../services/api';
 import type { UploadProgress } from '../types';
 import { trackResumeUpload, trackJobDescriptionUpload, trackError } from '../services/analytics';
+import SEO from '../components/SEO';
 
 export default function UploadPage() {
   const navigate = useNavigate();
@@ -200,6 +201,12 @@ export default function UploadPage() {
 
   return (
     <Layout>
+      <SEO 
+        title="Upload Resume & Job Description - Free ATS Analysis | Resume2Interview"
+        description="Upload your resume and job description for instant AI-powered ATS analysis. Get your match score and personalized recommendations in seconds. Completely free."
+        keywords="upload resume, job description upload, ATS check, resume analysis, free resume checker"
+        canonicalUrl="https://resume2interview.com/upload"
+      />
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="container mx-auto px-4 max-w-4xl">
           {/* Header */}

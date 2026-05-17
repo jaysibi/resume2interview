@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useState } from 'react';
+import SEO, { organizationSchema, websiteSchema, softwareApplicationSchema } from '../components/SEO';
 
 export default function LandingPage() {
   const [, setResumeFile] = useState<File | null>(null);
@@ -14,6 +15,16 @@ export default function LandingPage() {
 
   return (
     <Layout navigationVariant="solid">
+      <SEO 
+        title="Resume2Interview - AI Resume Tailoring for ATS & More Interview Calls"
+        description="Get more interview calls with AI-powered resume optimization. Instantly analyze your resume against job descriptions. Free ATS score check. Beat applicant tracking systems."
+        keywords="resume tailoring, ATS optimization, resume checker, job application, AI resume, interview preparation, applicant tracking system, resume keywords, job match score"
+        canonicalUrl="https://resume2interview.com"
+        schemaData={{
+          "@context": "https://schema.org",
+          "@graph": [organizationSchema, websiteSchema, softwareApplicationSchema]
+        }}
+      />
       <div className="min-h-screen bg-white">
         
         {/* HERO SECTION */}

@@ -1,8 +1,39 @@
 import Layout from '../components/Layout';
+import SEO, { faqSchema } from '../components/SEO';
 
 export default function FAQ() {
+  const faqs = [
+    { 
+      question: "What is ATS and why does it matter?", 
+      answer: "ATS (Applicant Tracking Systems) are software platforms used by companies to filter resumes before recruiters review them. These systems scan resumes for keywords, formatting, and relevance to the job description. Over 75% of resumes are rejected by ATS before reaching human eyes."
+    },
+    { 
+      question: "How does Resume2Interview help me pass ATS?", 
+      answer: "We analyze your resume against specific job descriptions to identify missing keywords, formatting issues, and content gaps. Our AI provides actionable recommendations to improve your ATS compatibility score."
+    },
+    { 
+      question: "Is Resume2Interview free to use?", 
+      answer: "Yes! We offer a free ATS score check for every resume. You can analyze your resume against unlimited job descriptions at no cost."
+    },
+    { 
+      question: "What file formats do you support?", 
+      answer: "We support PDF, DOCX, and TXT resume formats. We recommend using PDF for best formatting preservation."
+    },
+    { 
+      question: "How is this different from other resume builders?", 
+      answer: "Most resume builders help you create visually appealing resumes. Resume2Interview focuses specifically on helping your resume match a job description and pass ATS screening with AI-powered analysis."
+    }
+  ];
+
   return (
     <Layout navigationVariant="solid">
+      <SEO 
+        title="FAQ - Resume & ATS Questions Answered | Resume2Interview"
+        description="Get answers to common questions about ATS optimization, resume tailoring, and how Resume2Interview helps you land more interviews."
+        keywords="ATS FAQ, resume questions, applicant tracking system help, resume optimization questions"
+        canonicalUrl="https://resume2interview.com/faq"
+        schemaData={faqSchema(faqs)}
+      />
       <div className="min-h-screen bg-white">
         
         {/* Hero */}

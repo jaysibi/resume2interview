@@ -1,8 +1,16 @@
 import Layout from '../components/Layout';
+import SEO from '../components/SEO';
 
 export default function PrivacyPolicyPage() {
   return (
     <Layout>
+      <SEO 
+        title="Privacy Policy - Your Data Security | Resume2Interview"
+        description="Learn how Resume2Interview protects your personal information, resumes, and job application data. We take your privacy seriously."
+        keywords="privacy policy, data protection, resume security, user privacy"
+        canonicalUrl="https://resume2interview.com/privacy"
+        ogType="article"
+      />
       <div className="min-h-screen bg-white py-12">
         <div className="container mx-auto px-6 max-w-5xl">
           <h1 className="text-5xl font-bold text-gray-900 mb-6">

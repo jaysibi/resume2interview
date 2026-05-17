@@ -1,9 +1,17 @@
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import SEO from '../components/SEO';
 
 export default function Blog() {
   return (
     <Layout navigationVariant="solid">
+      <SEO 
+        title="Blog - Resume Tips & ATS Optimization Guide | Resume2Interview"
+        description="Learn expert strategies for beating ATS systems, optimizing resumes for recruiters, and landing more interview calls. Free resume and career advice."
+        keywords="resume tips, ATS optimization guide, career advice, job search tips, resume writing, interview preparation"
+        canonicalUrl="https://resume2interview.com/blog"
+        ogType="blog"
+      />
       <div className="min-h-screen bg-gray-50">
         
         {/* Hero */}

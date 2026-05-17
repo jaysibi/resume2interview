@@ -1,9 +1,16 @@
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import SEO from '../components/SEO';
 
 export default function Features() {
   return (
     <Layout navigationVariant="solid">
+      <SEO 
+        title="Features - AI Resume Optimization & ATS Analysis | Resume2Interview"
+        description="Discover powerful features: ATS score analysis, keyword matching, gap identification, and AI-powered recommendations to optimize your resume for any job."
+        keywords="resume features, ATS analysis, keyword matching, resume score, AI recommendations, job application tools"
+        canonicalUrl="https://resume2interview.com/features"
+      />
       <div className="min-h-screen bg-white">
         
         {/* Hero */}
