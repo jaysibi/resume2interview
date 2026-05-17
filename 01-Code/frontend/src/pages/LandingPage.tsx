@@ -1,18 +1,8 @@
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { useState } from 'react';
 import SEO, { organizationSchema, websiteSchema, softwareApplicationSchema } from '../components/SEO';
 
 export default function LandingPage() {
-  const [, setResumeFile] = useState<File | null>(null);
-  const [jobDescription, setJobDescription] = useState('');
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setResumeFile(e.target.files[0]);
-    }
-  };
-
   return (
     <Layout navigationVariant="solid">
       <SEO 
@@ -356,68 +346,6 @@ export default function LandingPage() {
             <p className="text-center text-gray-600 mt-8 text-lg">
               Same experience. Better positioning. More interview calls.
             </p>
-          </div>
-        </section>
-
-        {/* ATS FREE TOOL */}
-        <section className="bg-blue-50 py-16 px-6">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-4xl font-bold text-center text-gray-900 mb-4">
-              Get Your ATS Score — <span className="text-blue-600">Free</span>
-            </h2>
-            <p className="text-center text-gray-600 mb-12">
-              Find out why your resume is not getting shortlisted.
-            </p>
-
-            <div className="bg-white rounded-2xl p-8 shadow-lg">
-              <div className="grid md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Upload Your Resume
-                  </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors cursor-pointer">
-                    <input
-                      type="file"
-                      accept=".pdf,.docx"
-                      onChange={handleFileChange}
-                      className="hidden"
-                      id="resume-upload"
-                    />
-                    <label htmlFor="resume-upload" className="cursor-pointer">
-                      <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                      <p className="text-sm text-gray-600">
-                        Click to upload or drag and drop<br />
-                        <span className="text-xs text-gray-500">PDF or DOCX (Max 10MB)</span>
-                      </p>
-                    </label>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Paste Job Description
-                  </label>
-                  <textarea
-                    value={jobDescription}
-                    onChange={(e) => setJobDescription(e.target.value)}
-                    placeholder="Paste the job description here..."
-                    className="w-full h-full border-2 border-gray-300 rounded-xl p-4 text-sm resize-none focus:border-blue-400 focus:outline-none transition-colors"
-                    rows={6}
-                  />
-                </div>
-              </div>
-
-              <Link
-                to="/upload"
-                className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-colors flex items-center justify-center shadow-md"
-              >
-                Analyze My Resume →
-              </Link>
-
-
-            </div>
           </div>
         </section>
 
