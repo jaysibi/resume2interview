@@ -48,18 +48,13 @@ export default function Navigation({
           {/* Logo / Brand */}
           <Link 
             to="/" 
-            className="flex items-center space-x-3 group"
+            className="flex items-center group"
           >
-            <div className="flex flex-col">
-              <span className="text-xl font-bold leading-tight">
-                <span className="text-gray-900">Resume</span>
-                <span className="text-blue-600">2</span>
-                <span className="text-gray-900">Interview</span>
-              </span>
-              <span className="text-xs text-gray-500 leading-tight">
-                Get more interview calls with<br />job-matched resumes
-              </span>
-            </div>
+            <img 
+              src="/logo.png" 
+              alt="Resume2Interview - Get more interview calls" 
+              className="h-10 md:h-12 w-auto"
+            />
           </Link>
 
           {/* Desktop Navigation Links */}
