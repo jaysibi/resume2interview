@@ -28,9 +28,9 @@ export default function FAQ() {
   return (
     <Layout navigationVariant="solid">
       <SEO 
-        title="FAQ - Resume & ATS Questions Answered | Resume2Interview"
-        description="Get answers to common questions about ATS optimization, resume tailoring, and how Resume2Interview helps you land more interviews."
-        keywords="ATS FAQ, resume questions, applicant tracking system help, resume optimization questions"
+        title="Resume Tailoring FAQ - ATS & Job Application Questions Answered"
+        description="Common questions about ATS optimization, resume tailoring, keyword matching, and how to beat applicant tracking systems. Expert answers to help you get more interviews."
+        keywords="resume tailoring FAQ, ATS questions answered, how to tailor resume, beat ATS system, resume optimization help, job description matching questions"
         canonicalUrl="https://resume2interview.com/faq"
         schemaData={faqSchema(faqs)}
       />

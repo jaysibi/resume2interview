@@ -10,6 +10,9 @@ import Features from './pages/Features';
 import FAQ from './pages/FAQ';
 import Blog from './pages/Blog';
 import Analytics from './pages/Analytics';
+import TailorResumeGuide from './pages/blog/TailorResumeGuide';
+import ATSOptimizationGuide from './pages/blog/ATSOptimizationGuide';
+import ResumeKeywordsGuide from './pages/blog/ResumeKeywordsGuide';
 
 function App() {
   return (
@@ -25,6 +28,9 @@ function App() {
           <Route path="/features" element={<Features />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/tailor-resume-to-job-description" element={<TailorResumeGuide />} />
+          <Route path="/blog/ats-resume-optimization-guide" element={<ATSOptimizationGuide />} />
+          <Route path="/blog/resume-keywords-ats" element={<ResumeKeywordsGuide />} />
           <Route path="/analytics" element={<Analytics />} />
         </Routes>
       </Router>

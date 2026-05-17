@@ -202,9 +202,9 @@ export default function UploadPage() {
   return (
     <Layout>
       <SEO 
-        title="Upload Resume & Job Description - Free ATS Analysis | Resume2Interview"
-        description="Upload your resume and job description for instant AI-powered ATS analysis. Get your match score and personalized recommendations in seconds. Completely free."
-        keywords="upload resume, job description upload, ATS check, resume analysis, free resume checker"
+        title="Free Resume ATS Checker - Upload Resume & Job Description"
+        description="Upload your resume and paste any job description to get instant ATS compatibility score, keyword gap analysis, and tailoring recommendations. 100% free resume checker."
+        keywords="free ATS checker, upload resume analyzer, job description matcher, resume compatibility test, ATS score calculator, free resume optimization"
         canonicalUrl="https://resume2interview.com/upload"
       />
       <div className="min-h-screen bg-gray-50 py-12">

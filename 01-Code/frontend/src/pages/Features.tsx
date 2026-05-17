@@ -6,9 +6,9 @@ export default function Features() {
   return (
     <Layout navigationVariant="solid">
       <SEO 
-        title="Features - AI Resume Optimization & ATS Analysis | Resume2Interview"
-        description="Discover powerful features: ATS score analysis, keyword matching, gap identification, and AI-powered recommendations to optimize your resume for any job."
-        keywords="resume features, ATS analysis, keyword matching, resume score, AI recommendations, job application tools"
+        title="Resume Tailoring Features - AI-Powered ATS Optimization Tools"
+        description="Discover our AI resume optimization features: instant ATS compatibility score, keyword gap analysis, job description matching, and personalized improvement recommendations."
+        keywords="resume tailoring features, ATS optimization tools, resume keyword matching, job description analyzer, AI resume recommendations, resume scoring"
         canonicalUrl="https://resume2interview.com/features"
       />
       <div className="min-h-screen bg-white">

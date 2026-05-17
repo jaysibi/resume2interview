@@ -16,9 +16,9 @@ export default function LandingPage() {
   return (
     <Layout navigationVariant="solid">
       <SEO 
-        title="Resume2Interview - AI Resume Tailoring for ATS & More Interview Calls"
-        description="Get more interview calls with AI-powered resume optimization. Instantly analyze your resume against job descriptions. Free ATS score check. Beat applicant tracking systems."
-        keywords="resume tailoring, ATS optimization, resume checker, job application, AI resume, interview preparation, applicant tracking system, resume keywords, job match score"
+        title="AI Resume Tailoring Tool - Optimize for ATS & Get More Interviews | Resume2Interview"
+        description="Free AI-powered resume tailoring tool. Instantly match your resume to job descriptions, get ATS compatibility score, and receive personalized optimization tips. Beat applicant tracking systems."
+        keywords="resume tailoring tool, AI resume optimization, ATS resume checker, tailor resume to job description, resume job description match, free ATS checker, applicant tracking system optimizer, resume keyword analyzer"
         canonicalUrl="https://resume2interview.com"
         schemaData={{
           "@context": "https://schema.org",
