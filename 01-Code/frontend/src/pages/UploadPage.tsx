@@ -5,6 +5,12 @@ import api from '../services/api';
 import type { UploadProgress } from '../types';
 import { trackResumeUpload, trackJobDescriptionUpload, trackError } from '../services/analytics';
 import SEO from '../components/SEO';
+import {
+  validateFile,
+  validateJobDescriptionText,
+  sanitizeFileName,
+  formatFileSize,
+} from '../utils/fileValidation';
 
 export default function UploadPage() {
   const navigate = useNavigate();
@@ -31,23 +37,92 @@ export default function UploadPage() {
   });
   const [resumeId, setResumeId] = useState<string | null>(null);
   const [jdId, setJDId] = useState<string | null>(null);
+  
+  // Validation error states
+  const [resumeError, setResumeError] = useState<string | null>(null);
+  const [jdError, setJDError] = useState<string | null>(null);
+  const [jdTextError, setJDTextError] = useState<string | null>(null);
 
-  // Handle resume file selection
+  // Handle resume file selection with validation
   const handleResumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file
+      const validation = validateFile(file);
+      if (!validation.valid) {
+        setResumeError(validation.error || 'Invalid file');
+        setResumeFile(null);
+        e.target.value = ''; // Clear input
+        return;
+      }
+      
+      setResumeError(null);
       setResumeFile(file);
       setResumeProgress({ progress: 0, status: 'idle' });
+      setResumeId(null); // Reset upload if changing file
     }
   };
 
-  // Handle JD file selection
+  // Handle JD file selection with validation
   const handleJDChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file
+      const validation = validateFile(file);
+      if (!validation.valid) {
+        setJDError(validation.error || 'Invalid file');
+        setJDFile(null);
+        e.target.value = ''; // Clear input
+        return;
+      }
+      
+      setJDError(null);
       setJDFile(file);
       setJDProgress({ progress: 0, status: 'idle' });
+      setJDId(null); // Reset upload if changing file
     }
+  };
+  
+  // Validate JD text input
+  const handleJDTextChange = (text: string) => {
+    setJdText(text);
+    setJDTextError(null);
+    
+    // Clear error when user starts typing
+    if (text.length > 0) {
+      setJDError(null);
+    }
+  };
+  
+  // Remove resume file
+  const removeResumeFile = () => {
+    setResumeFile(null);
+    setResumeProgress({ progress: 0, status: 'idle' });
+    setResumeId(null);
+    setResumeError(null);
+    // Clear file input
+    const fileInput = document.getElementById('resume-upload') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  };
+  
+  // Remove JD file
+  const removeJDFile = () => {
+    setJDFile(null);
+    setJDProgress({ progress: 0, status: 'idle' });
+    setJDId(null);
+    setJDError(null);
+    // Clear file input
+    const fileInput = document.getElementById('jd-upload') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  };
+  
+  // Clear JD text
+  const clearJDText = () => {
+    setJdText('');
+    setJDProgress({ progress: 0, status: 'idle' });
+    setJDId(null);
+    setJDTextError(null);
+    setJDError(null);
   };
 
   // Upload resume
@@ -137,7 +212,23 @@ export default function UploadPage() {
 
   // Upload job description from pasted text
   const uploadJDFromText = async () => {
-    if (!jdText.trim()) return;
+    if (!jdText.trim()) {
+      setJDTextError('Job description cannot be empty');
+      return;
+    }
+
+    // Validate text content
+    const validation = validateJobDescriptionText(jdText);
+    if (!validation.valid) {
+      setJDTextError(validation.error || 'Invalid content');
+      if (validation.warnings) {
+        console.warn('Security warnings:', validation.warnings);
+      }
+      trackError('jd_text_validation_failed', validation.error || 'Validation failed', 'UploadPage');
+      return;
+    }
+    
+    setJDTextError(null);
 
     try {
       setJDProgress({ progress: 50, status: 'uploading' });
@@ -250,11 +341,43 @@ export default function UploadPage() {
               </label>
             </div>
 
-            {resumeFile && (
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">
-                  Selected: <span className="font-medium">{resumeFile.name}</span>
+            {/* Validation Error */}
+            {resumeError && (
+              <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-red-800 text-sm flex items-start gap-2">
+                  <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  {resumeError}
                 </p>
+              </div>
+            )}
+
+            {resumeFile && !resumeError && (
+              <div className="mb-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {sanitizeFileName(resumeFile.name)}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        {formatFileSize(resumeFile.size)} • {resumeFile.type.split('/')[1]?.toUpperCase() || 'File'}
+                      </p>
+                    </div>
+                    {resumeProgress.status === 'idle' && (
+                      <button
+                        onClick={removeResumeFile}
+                        className="flex-shrink-0 text-red-600 hover:text-red-800 p-1"
+                        title="Remove file"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
                 {resumeProgress.status === 'idle' && (
                   <button 
                     onClick={uploadResume}
@@ -352,11 +475,43 @@ export default function UploadPage() {
                   </label>
                 </div>
 
-                {jdFile && (
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-600 mb-2">
-                      Selected: <span className="font-medium">{jdFile.name}</span>
+                {/* Validation Error */}
+                {jdError && (
+                  <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-red-800 text-sm flex items-start gap-2">
+                      <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                      {jdError}
                     </p>
+                  </div>
+                )}
+
+                {jdFile && !jdError && (
+                  <div className="mb-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {sanitizeFileName(jdFile.name)}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            {formatFileSize(jdFile.size)} • {jdFile.type.split('/')[1]?.toUpperCase() || 'File'}
+                          </p>
+                        </div>
+                        {jdProgress.status === 'idle' && (
+                          <button
+                            onClick={removeJDFile}
+                            className="flex-shrink-0 text-red-600 hover:text-red-800 p-1"
+                            title="Remove file"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
                     
                     {/* Optional metadata fields */}
                     <div className="space-y-2 mb-4">
@@ -398,12 +553,25 @@ export default function UploadPage() {
               // Text paste mode
               <>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Job Description Text
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Job Description Text
+                    </label>
+                    {jdText.trim() && jdProgress.status === 'idle' && (
+                      <button
+                        onClick={clearJDText}
+                        className="text-sm text-red-600 hover:text-red-800 flex items-center gap-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Clear
+                      </button>
+                    )}
+                  </div>
                   <textarea
                     value={jdText}
-                    onChange={(e) => setJdText(e.target.value)}
+                    onChange={(e) => handleJDTextChange(e.target.value)}
                     placeholder="Paste the job description text here...
 
 Example:
@@ -420,18 +588,40 @@ Requirements:
 - 5+ years of experience with Python/Java
 - Strong understanding of cloud platforms (AWS/Azure)
 - Excellent communication skills"
-                    className="w-full h-64 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
+                    className={`w-full h-64 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 font-mono text-sm ${
+                      jdTextError ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-primary-500'
+                    }`}
+                    disabled={jdProgress.status === 'uploading' || jdProgress.status === 'success'}
                   />
-                  <p className="text-xs text-gray-500 mt-2">
-                    Copy the job description from any job board and paste it here
-                  </p>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-xs text-gray-500">
+                      Copy the job description from any job board and paste it here
+                    </p>
+                    <p className={`text-xs ${jdText.length > 45000 ? 'text-orange-600 font-medium' : 'text-gray-500'}`}>
+                      {jdText.length.toLocaleString()} / 50,000 characters
+                    </p>
+                  </div>
                 </div>
 
-                {jdText.trim() && (
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-600 mb-2">
-                      Characters: <span className="font-medium">{jdText.length}</span>
+                {/* Validation Error for text */}
+                {jdTextError && (
+                  <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-red-800 text-sm flex items-start gap-2">
+                      <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                      {jdTextError}
                     </p>
+                  </div>
+                )}
+
+                {jdText.trim() && !jdTextError && (
+                  <div className="mb-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                      <p className="text-sm text-gray-700">
+                        ✓ Text ready ({jdText.split(/\s+/).filter(w => w.length > 0).length} words, {jdText.split('\n').length} lines)
+                      </p>
+                    </div>
                     
                     {/* Optional metadata fields */}
                     <div className="space-y-2 mb-4">
