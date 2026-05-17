@@ -44,16 +44,16 @@ export default function Navigation({
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${baseClasses}`}>
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between py-3">
           {/* Logo / Brand */}
           <Link 
             to="/" 
-            className="flex items-center group"
+            className="flex items-center group py-2"
           >
             <img 
               src="/logo.png" 
               alt="Resume2Interview - Get more interview calls" 
-              className="h-auto w-72 md:w-[480px]"
+              className="h-12 md:h-14 w-auto"
             />
           </Link>
 
