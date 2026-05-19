@@ -9,7 +9,9 @@ import {
   trackATSScoreRequest, 
   trackATSScoreComplete,
   trackError,
-  trackRateLimitHit
+  trackRateLimitHit,
+  trackAnalysisCompletionConversion,
+  trackJourneyStep
 } from '../services/analytics';
 
 export default function ResultsPage() {
@@ -56,6 +58,17 @@ export default function ResultsPage() {
           atsData.keyword_match_percentage,
           atsData.format_score
         );
+        
+        // Track as conversion (user completed full analysis)
+        const analysisStartTime = Date.now();
+        trackAnalysisCompletionConversion(
+          'gap_analysis',
+          gapData.match_percentage,
+          0 // Time tracking would need to be implemented with a start timestamp
+        );
+        
+        // Track journey step
+        trackJourneyStep('view_analysis', 3, 'upload_jd');
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to fetch analysis';
         setError(errorMessage);
