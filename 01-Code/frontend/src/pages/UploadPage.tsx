@@ -3,7 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../services/api';
 import type { UploadProgress } from '../types';
-import { trackResumeUpload, trackJobDescriptionUpload, trackError } from '../services/analytics';
+import { 
+  trackResumeUpload, 
+  trackJobDescriptionUpload, 
+  trackError,
+  trackResumeUploadConversion,
+  trackJourneyStep,
+} from '../services/analytics';
 import SEO from '../components/SEO';
 import {
   validateFile,
@@ -141,6 +147,12 @@ export default function UploadPage() {
       
       // Track successful upload
       trackResumeUpload(resumeFile.name, resumeFile.size);
+      
+      // Track as conversion event (primary conversion)
+      trackResumeUploadConversion(resumeFile.name, resumeFile.size, 'direct');
+      
+      // Track journey step
+      trackJourneyStep('upload_resume', 1);
     } catch (error) {
       console.error('Resume upload error:', error);
       let errorMessage = 'Upload failed';
@@ -187,6 +199,9 @@ export default function UploadPage() {
       
       // Track successful upload
       trackJobDescriptionUpload(jdFile.name, jdFile.size, !!jobUrl);
+      
+      // Track journey step
+      trackJourneyStep('upload_jd', 2, 'upload_resume');
     } catch (error) {
       console.error('JD upload error:', error);
       let errorMessage = 'Upload failed';
@@ -256,6 +271,9 @@ export default function UploadPage() {
       
       // Track successful upload (text mode)
       trackJobDescriptionUpload(filename, jdText.length, !!jobUrl);
+      
+      // Track journey step
+      trackJourneyStep('upload_jd', 2, 'upload_resume');
     } catch (error) {
       console.error('JD upload error:', error);
       let errorMessage = 'Upload failed';

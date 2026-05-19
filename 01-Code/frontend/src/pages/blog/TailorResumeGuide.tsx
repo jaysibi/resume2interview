@@ -1,8 +1,23 @@
 import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import SEO from '../../components/SEO';
+import { useBlogAnalytics } from '../../hooks/useBlogAnalytics';
+import { trackBlogCTAClick } from '../../services/analytics';
 
 export default function TailorResumeGuide() {
+  // Track blog engagement
+  useBlogAnalytics(
+    'How to Tailor Your Resume to Any Job Description',
+    'tailor-resume-to-job-description'
+  );
+
+  const handleCTAClick = (ctaText: string, location: string) => {
+    trackBlogCTAClick(
+      'How to Tailor Your Resume to Any Job Description',
+      ctaText,
+      location
+    );
+  };
   const articleSchema = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -198,6 +213,7 @@ export default function TailorResumeGuide() {
               </p>
               <Link
                 to="/upload"
+                onClick={() => handleCTAClick('Analyze Your Resume Free', 'bottom_cta')}
                 className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg transition-colors"
               >
                 Analyze Your Resume Free →

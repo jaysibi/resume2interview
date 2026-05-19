@@ -1,8 +1,23 @@
 import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import SEO from '../../components/SEO';
+import { useBlogAnalytics } from '../../hooks/useBlogAnalytics';
+import { trackBlogCTAClick } from '../../services/analytics';
 
 export default function ATSOptimizationGuide() {
+  // Track blog engagement
+  useBlogAnalytics(
+    'The Complete Guide to ATS Resume Optimization',
+    'ats-resume-optimization-guide'
+  );
+
+  const handleCTAClick = (ctaText: string, location: string) => {
+    trackBlogCTAClick(
+      'The Complete Guide to ATS Resume Optimization',
+      ctaText,
+      location
+    );
+  };
   const articleSchema = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -266,6 +281,7 @@ export default function ATSOptimizationGuide() {
               </p>
               <Link
                 to="/upload"
+                onClick={() => handleCTAClick('Get Free ATS Analysis', 'bottom_cta')}
                 className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg transition-colors"
               >
                 Get Free ATS Analysis →

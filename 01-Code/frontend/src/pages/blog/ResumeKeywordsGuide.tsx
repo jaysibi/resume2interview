@@ -1,8 +1,23 @@
 import { Link } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import SEO from '../../components/SEO';
+import { useBlogAnalytics } from '../../hooks/useBlogAnalytics';
+import { trackBlogCTAClick } from '../../services/analytics';
 
 export default function ResumeKeywordsGuide() {
+  // Track blog engagement
+  useBlogAnalytics(
+    'Resume Keywords Guide: How to Beat ATS Systems',
+    'resume-keywords-ats'
+  );
+
+  const handleCTAClick = (ctaText: string, location: string) => {
+    trackBlogCTAClick(
+      'Resume Keywords Guide: How to Beat ATS Systems',
+      ctaText,
+      location
+    );
+  };
   const articleSchema = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -335,8 +350,7 @@ export default function ResumeKeywordsGuide() {
                 Upload your resume and job description to instantly see which keywords you're missing
               </p>
               <Link
-                to="/upload"
-                className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg transition-colors"
+                to="/upload"                onClick={() => handleCTAClick('Analyze Your Keywords Free', 'bottom_cta')}                className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg transition-colors"
               >
                 Analyze Keywords Free →
               </Link>
