@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import SEO, { organizationSchema, websiteSchema, softwareApplicationSchema } from '../components/SEO';
+import DemoVideo from '../components/DemoVideo';
 
 export default function LandingPage() {
   return (
@@ -195,6 +196,9 @@ export default function LandingPage() {
             </p>
           </div>
         </section>
+
+        {/* DEMO VIDEO SECTION */}
+        <DemoVideo />
 
         {/* HOW IT WORKS */}
         <section id="how-it-works" className="py-16 px-6">
