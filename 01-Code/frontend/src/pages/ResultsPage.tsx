@@ -60,7 +60,6 @@ export default function ResultsPage() {
         );
         
         // Track as conversion (user completed full analysis)
-        const analysisStartTime = Date.now();
         trackAnalysisCompletionConversion(
           'gap_analysis',
           gapData.match_percentage,
