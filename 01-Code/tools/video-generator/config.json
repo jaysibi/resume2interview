@@ -1,0 +1,29 @@
+{
+  "recording": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "bitrate": "5M"
+  },
+  "brand_colors": {
+    "primary": "#2563EB",
+    "secondary": "#FFFFFF"
+  },
+  "text_overlays": {
+    "font": "Arial-Bold",
+    "size": 48,
+    "position": "bottom-center",
+    "color": "#FFFFFF",
+    "outline_color": "#000000"
+  },
+  "logo": {
+    "enabled": false,
+    "path": "../../frontend/public/logo.png",
+    "position": "top-right",
+    "size": 100
+  },
+  "audio": {
+    "background_music_volume": 0.15,
+    "voiceover_volume": 1
+  }
+}

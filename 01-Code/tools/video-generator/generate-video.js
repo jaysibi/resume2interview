@@ -56,7 +56,7 @@ async function checkPrerequisites() {
   
   // Check Python packages
   log('\nChecking Python packages...', 'blue');
-  const pythonPackages = ['moviepy', 'gtts', 'google-api-python-client'];
+  const pythonPackages = ['moviepy', 'gtts'];
   
   for (const pkg of pythonPackages) {
     try {
@@ -138,65 +138,75 @@ async function compileVideo() {
   }
 }
 
-async function uploadToYouTube() {
-  step(5, 'Uploading to YouTube');
+async function copyVideoToWebsite() {
+  step(5, 'Copying Video to Website');
   
-  log('Authenticating with YouTube API...', 'blue');
-  log('This will take 2-3 minutes...', 'yellow');
-  log('⚠️  Browser may open for OAuth authentication', 'yellow');
+  log('Moving video to frontend/public...', 'blue');
+  
+  const frontendPublicDir = path.join(__dirname, '..', '..', 'frontend', 'public');
+  const videoDestination = path.join(frontendPublicDir, 'demo-video.mp4');
+  const finalVideo = path.join(OUTPUT_DIR, 'resume2interview-demo-final.mp4');
+  
+  if (!fs.existsSync(finalVideo)) {
+    log('❌ Final video not found', 'red');
+    throw new Error('Video file missing');
+  }
   
   try {
-    execSync('python upload-to-youtube.py', {
-      stdio: 'inherit',
-      cwd: __dirname
-    });
-    log('✅ Video uploaded to YouTube!', 'green');
+    fs.copyFileSync(finalVideo, videoDestination);
+    const videoSizeMB = (fs.statSync(videoDestination).size / (1024 * 1024)).toFixed(1);
+    log(`✅ Video copied! (${videoSizeMB} MB)`, 'green');
+    log(`   Location: frontend/public/demo-video.mp4`, 'blue');
   } catch (error) {
-    log('❌ YouTube upload failed', 'red');
+    log('❌ Failed to copy video', 'red');
     throw error;
   }
 }
 
 async function updateWebsite() {
-  step(6, 'Updating Website');
+  step(6, 'Committing Changes');
   
-  log('Reading video ID from YouTube...', 'blue');
-  
-  const videoIdFile = path.join(OUTPUT_DIR, 'video-id.txt');
-  if (!fs.existsSync(videoIdFile)) {
-    log('❌ Video ID not found. Upload may have failed.', 'red');
-    return;
-  }
-  
-  const videoId = fs.readFileSync(videoIdFile, 'utf-8').trim();
-  log(`Video ID: ${videoId}`, 'blue');
-  
-  log('Updating landing page...', 'blue');
+  log('Committing video to git...', 'blue');
   
   try {
-    execSync(`node update-website.js ${videoId}`, {
-      stdio: 'inherit',
-      cwd: __dirname
+    const timestamp = new Date().toISOString().split('T')[0];
+    const commitMessage = `Update demo video [${timestamp}]`;
+    
+    execSync('git add frontend/public/demo-video.mp4', { 
+      cwd: path.join(__dirname, '..', '..'),
+      stdio: 'pipe' 
     });
-    log('✅ Website updated!', 'green');
+    
+    execSync(`git commit -m "${commitMessage}"`, { 
+      cwd: path.join(__dirname, '..', '..'),
+      stdio: 'pipe' 
+    });
+    
+    execSync('git push origin main', { 
+      cwd: path.join(__dirname, '..', '..'),
+      stdio: 'pipe' 
+    });
+    
+    log('✅ Changes pushed to GitHub!', 'green');
+    log('   Vercel will auto-deploy in 2-3 minutes', 'blue');
   } catch (error) {
-    log('❌ Website update failed', 'red');
-    throw error;
+    log('⚠️  Git commit failed (you may need to commit manually)', 'yellow');
+    log(`   Run: git add frontend/public/demo-video.mp4`, 'blue');
+    log(`   Run: git commit -m "Update demo video"`, 'blue');
+    log(`   Run: git push origin main`, 'blue');
   }
 }
 
 async function printSummary() {
   step(7, 'Summary');
   
-  const videoIdFile = path.join(OUTPUT_DIR, 'video-id.txt');
-  const videoId = fs.existsSync(videoIdFile) 
-    ? fs.readFileSync(videoIdFile, 'utf-8').trim()
-    : 'N/A';
-  
   const videoFile = path.join(OUTPUT_DIR, 'resume2interview-demo-final.mp4');
   const fileSize = fs.existsSync(videoFile)
     ? (fs.statSync(videoFile).size / (1024 * 1024)).toFixed(2)
     : 'N/A';
+  
+  const publicVideo = path.join(__dirname, '..', '..', 'frontend', 'public', 'demo-video.mp4');
+  const deployed = fs.existsSync(publicVideo);
   
   log('\n' + '🎉'.repeat(30), 'green');
   log('VIDEO GENERATION COMPLETE!', 'bright');
@@ -205,21 +215,19 @@ async function printSummary() {
   log('📊 Results:', 'blue');
   log(`   Video File: ${videoFile}`);
   log(`   File Size: ${fileSize} MB`);
-  log(`   Video ID: ${videoId}`);
-  log(`   YouTube URL: https://youtube.com/watch?v=${videoId}`, 'green');
+  log(`   Website Path: /demo-video.mp4`);
   log(`   Website: https://resume2interview.com`, 'green');
   
   log('\n📋 Next Steps:', 'blue');
-  log('   1. Visit https://resume2interview.com to see the video live');
-  log('   2. Share on LinkedIn, Twitter, Reddit');
-  log('   3. Add to Product Hunt submission');
+  log('   1. Wait 2-3 minutes for Vercel deployment');
+  log('   2. Visit https://resume2interview.com to see the video');
+  log('   3. Test video playback on desktop and mobile');
   log('   4. Monitor GA4 for video_play events');
   
-  log('\n💡 Pro Tips:', 'yellow');
-  log('   • Check YouTube Analytics after 24 hours');
-  log('   • A/B test different thumbnails');
-  log('   • Share in relevant subreddits');
-  log('   • Pin to top of social profiles');
+  log('\n💡 Tips:', 'yellow');
+  log('   • Video is self-hosted (no bandwidth limits on Vercel)');
+  log('   • Re-run generator anytime to update video');
+  log('   • Consider uploading to YouTube later for SEO');
   
   log('\n✨ Done! Video is live and tracking in GA4.', 'bright');
 }
@@ -238,7 +246,7 @@ async function main() {
     await recordDemo();
     await generateVoiceover();
     await compileVideo();
-    await uploadToYouTube();
+    await copyVideoToWebsite();
     await updateWebsite();
     await printSummary();
     

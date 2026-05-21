@@ -11,12 +11,6 @@ moviepy==1.0.3
 # Text-to-speech
 gTTS==2.4.0
 
-# YouTube upload
-google-auth==2.23.4
-google-auth-oauthlib==1.1.0
-google-auth-httplib2==0.1.1
-google-api-python-client==2.108.0
-
 # Image processing (for thumbnails)
 Pillow==10.1.0
 

@@ -66,9 +66,6 @@ SAMPLE_RESUME_PATH=../../DEMO_VIDEO_SAMPLES.md
 SAMPLE_JD_PATH=../../DEMO_VIDEO_SAMPLES.md
 OUTPUT_DIR=./output
 
-# YouTube API (get from https://console.cloud.google.com/)
-YOUTUBE_CREDENTIALS=./youtube_credentials.json
-
 # Voice Provider: gtts (free) or elevenlabs (paid, better quality)
 VOICE_PROVIDER=gtts
 
@@ -130,20 +127,16 @@ VOICE_PROVIDER=gtts
   step('Setup Complete!');
   
   log('\n📋 Next Steps:', 'blue');
-  log('   1. Get YouTube API credentials:', 'yellow');
-  log('      • Go to: https://console.cloud.google.com/', 'yellow');
-  log('      • Enable YouTube Data API v3');
-  log('      • Create OAuth 2.0 credentials');
-  log('      • Download as youtube_credentials.json');
-  log('      • Place in this directory\n');
-  
-  log('   2. Generate your video:', 'green');
+  log('   Generate your video:', 'green');
   log('      node generate-video.js\n', 'bright');
   
-  log('   3. Sit back and relax! ☕', 'green');
-  log('      • Total time: 10-15 minutes');
-  log('      • Video will auto-upload to YouTube');
-  log('      • Website will auto-update with video');
+  log('   What happens:', 'yellow');
+  log('      • Records 90-second demo (automated)');
+  log('      • Generates AI voiceover');
+  log('      • Compiles video with overlays');
+  log('      • Copies to frontend/public/demo-video.mp4');
+  log('      • Commits and pushes to GitHub');
+  log('      • Vercel auto-deploys in 2-3 min');
   
   log('\n💡 Optional: Premium Voice (ElevenLabs)', 'yellow');
   log('   • Get API key: https://elevenlabs.io/');

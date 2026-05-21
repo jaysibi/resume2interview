@@ -1,32 +1,36 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { trackEvent } from '../services/analytics';
 
 interface DemoVideoProps {
-  videoId?: string; // YouTube video ID (e.g., "dQw4w9WgXcQ")
   title?: string;
   showCTA?: boolean;
 }
 
 export default function DemoVideo({ 
-  videoId = "YOUR_VIDEO_ID_HERE", 
   title = "See How Resume2Interview Works",
   showCTA = true 
 }: DemoVideoProps) {
   const [hasPlayed, setHasPlayed] = useState(false);
+  const [videoExists, setVideoExists] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const handlePlay = () => {
     if (!hasPlayed) {
       trackEvent('video_play', {
         video_name: 'demo_tutorial',
-        video_id: videoId,
+        video_source: 'self_hosted',
         location: 'landing_page'
       });
       setHasPlayed(true);
     }
   };
 
-  // If no video uploaded yet, show placeholder
-  if (videoId === "YOUR_VIDEO_ID_HERE") {
+  const handleError = () => {
+    setVideoExists(false);
+  };
+
+  // If video doesn't exist yet, show placeholder
+  if (!videoExists) {
     return (
       <section className="py-20 bg-gradient-to-b from-white to-blue-50">
         <div className="max-w-6xl mx-auto px-6">
@@ -47,7 +51,7 @@ export default function DemoVideo({
                 </svg>
               </div>
               <p className="text-gray-500 text-lg font-medium">Demo video coming soon</p>
-              <p className="text-gray-400 text-sm mt-2">Upload your video to YouTube and add the video ID here</p>
+              <p className="text-gray-400 text-sm mt-2">Generating your demo video...</p>
             </div>
           </div>
           
@@ -66,7 +70,7 @@ export default function DemoVideo({
     );
   }
 
-  // Video is uploaded, show embedded YouTube player
+  // Video exists, show HTML5 video player
   return (
     <section className="py-20 bg-gradient-to-b from-white to-blue-50">
       <div className="max-w-6xl mx-auto px-6">
@@ -79,18 +83,19 @@ export default function DemoVideo({
           </p>
         </div>
         
-        <div className="aspect-video max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl">
-          <iframe
-            width="100%"
-            height="100%"
-            src={`https://www.youtube.com/embed/${videoId}?rel=0`}
-            title="Resume2Interview Tutorial - How to Optimize Your Resume for ATS"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            onLoad={handlePlay}
+        <div className="aspect-video max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl bg-black">
+          <video
+            ref={videoRef}
             className="w-full h-full"
-          ></iframe>
+            controls
+            preload="metadata"
+            poster="/demo-thumbnail.jpg"
+            onPlay={handlePlay}
+            onError={handleError}
+          >
+            <source src="/demo-video.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
         </div>
         
         <div className="max-w-4xl mx-auto mt-8">
