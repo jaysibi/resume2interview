@@ -144,7 +144,7 @@ async function recordDemo() {
     await page.waitForTimeout(2000);
     
     // ============================================================
-    // SCENE 3: Upload Resume (10 seconds)
+    // SCENE 3: Upload Resume (15 seconds)
     // ============================================================
     console.log('▶ Scene 3: Uploading resume...');
     
@@ -156,27 +156,93 @@ async function recordDemo() {
     const fileInput = await page.locator('input[type="file"]').first();
     await fileInput.setInputFiles(tempResumeFile);
     
-    await page.waitForTimeout(3000); // Show file loaded
+    console.log('   File selected, waiting for UI update...');
+    await page.waitForTimeout(2000);
+    
+    // Click "Upload Resume" button
+    console.log('   Clicking Upload Resume button...');
+    try {
+      const uploadResumeButton = await page.locator('button:has-text("Upload Resume")').first();
+      await uploadResumeButton.waitFor({ state: 'visible', timeout: 5000 });
+      await uploadResumeButton.click();
+      console.log('   Resume upload started...');
+    } catch (error) {
+      console.log('   ⚠️ Upload Resume button not found, may already be uploaded');
+    }
+    
+    // Wait for resume upload to complete
+    console.log('   Waiting for resume processing...');
+    await page.waitForTimeout(8000); // Give time for API call and processing
     
     // ============================================================
-    // SCENE 4: Paste Job Description (10 seconds)
+    // SCENE 4: Paste Job Description (15 seconds)
     // ============================================================
     console.log('▶ Scene 4: Pasting job description...');
     
-    // Find job description textarea
+    // Find job description textarea (might be in a tab)
+    await page.waitForTimeout(1000);
+    
     const jdTextarea = await page.locator('textarea').first();
     await jdTextarea.click();
+    await page.waitForTimeout(500);
+    
+    // Type the JD text (more realistic than instant fill)
+    console.log('   Typing job description...');
     await jdTextarea.fill(SAMPLE_JD);
     
-    await page.waitForTimeout(4000); // Show JD pasted
+    await page.waitForTimeout(2000);
+    
+    // Click "Upload" button for JD text
+    console.log('   Clicking Upload JD button...');
+    try {
+      // Look for button with text like "Upload", "Submit", etc near the textarea
+      const uploadJDButton = await page.locator('button:has-text("Upload")').last(); // Use last() to get JD upload button
+      await uploadJDButton.waitFor({ state: 'visible', timeout: 5000 });
+      await uploadJDButton.click();
+      console.log('   JD upload started...');
+    } catch (error) {
+      console.log('   ⚠️ Upload JD button not found, trying alternative...');
+      // Try finding by button near form
+      await page.locator('button').filter({ hasText: /Upload|Submit/i }).last().click();
+    }
+    
+    // Wait for JD upload to complete
+    console.log('   Waiting for JD processing...');
+    await page.waitForTimeout(6000);
     
     // ============================================================
-    // SCENE 5: Click Analyze (2 seconds)
+    // SCENE 5: Wait for Button to Enable & Click (5 seconds)
     // ============================================================
-    console.log('▶ Scene 5: Clicking analyze...');
+    console.log('▶ Scene 5: Waiting for analyze button...');
     
+    // Wait for button to become enabled (not disabled)
     const analyzeButton = await page.locator('button:has-text("Analyze")').first();
-    await analyzeButton.click();
+    
+    try {
+      // Wait up to 15 seconds for button to be enabled
+      await analyzeButton.waitFor({ state: 'visible', timeout: 5000 });
+      
+      // Check if button is still disabled, wait a bit more
+      let attempts = 0;
+      while (attempts < 15) {
+        const isDisabled = await analyzeButton.evaluate(btn => btn.hasAttribute('disabled'));
+        if (!isDisabled) {
+          console.log('   ✅ Button is enabled!');
+          break;
+        }
+        console.log(`   Button still disabled, waiting... (attempt ${attempts + 1}/15)`);
+        await page.waitForTimeout(1000);
+        attempts++;
+      }
+      
+      // Click the button
+      console.log('   Clicking analyze button...');
+      await analyzeButton.click({ timeout: 5000 });
+      
+    } catch (error) {
+      console.log('   ❌ Could not click analyze button:', error.message);
+      throw new Error('Analyze button did not become enabled. Check if uploads completed successfully.');
+    }
     
     await page.waitForTimeout(2000);
     
