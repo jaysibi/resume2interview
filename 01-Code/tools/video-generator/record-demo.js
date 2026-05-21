@@ -148,8 +148,8 @@ async function recordDemo() {
     // ============================================================
     console.log('▶ Scene 3: Uploading resume...');
     
-    // Create temporary resume file
-    const tempResumeFile = path.join(OUTPUT_DIR, 'temp-resume.txt');
+    // Create temporary resume file with professional name
+    const tempResumeFile = path.join(OUTPUT_DIR, 'John Doe - Resume.txt');
     await fs.writeFile(tempResumeFile, SAMPLE_RESUME);
     
     // Find and interact with file upload
