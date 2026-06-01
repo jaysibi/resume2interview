@@ -62,7 +62,9 @@ export default function UploadPage() {
       setResumeError(null);
       setResumeFile(file);
       setResumeProgress({ progress: 0, status: 'idle' });
-      setResumeId(null); // Reset upload if changing file
+      setResumeId(null);
+      // Auto-upload
+      uploadResumeFile(file);
     }
   };
 
@@ -82,7 +84,9 @@ export default function UploadPage() {
       setJDError(null);
       setJDFile(file);
       setJDProgress({ progress: 0, status: 'idle' });
-      setJDId(null); // Reset upload if changing file
+      setJDId(null);
+      // Auto-upload
+      uploadJDFile(file);
     }
   };
   
@@ -128,93 +132,48 @@ export default function UploadPage() {
     setJDError(null);
   };
 
-  // Upload resume
-  const uploadResume = async () => {
-    if (!resumeFile) return;
-
+  // Upload resume (accepts file directly for auto-upload)
+  const uploadResumeFile = async (file: File) => {
     try {
       setResumeProgress({ progress: 50, status: 'uploading' });
-      const response = await api.uploadResume(resumeFile);
+      const response = await api.uploadResume(file);
       setResumeId(response.id);
       setResumeProgress({ 
         progress: 100, 
         status: 'success',
         message: 'Resume uploaded successfully' 
       });
-      
-      // Track successful upload
-      trackResumeUpload(resumeFile.name, resumeFile.size);
-      
-      // Track as conversion event (primary conversion)
-      trackResumeUploadConversion(resumeFile.name, resumeFile.size, 'direct');
-      
-      // Track journey step
+      trackResumeUpload(file.name, file.size);
+      trackResumeUploadConversion(file.name, file.size, 'direct');
       trackJourneyStep('upload_resume', 1);
     } catch (error) {
       console.error('Resume upload error:', error);
       let errorMessage = 'Upload failed';
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error && typeof error === 'object') {
-        errorMessage = JSON.stringify(error);
-      }
-      
-      // Track error
+      if (error instanceof Error) errorMessage = error.message;
+      else if (typeof error === 'string') errorMessage = error;
+      else if (error && typeof error === 'object') errorMessage = JSON.stringify(error);
       trackError('resume_upload_failed', errorMessage, 'UploadPage');
-      
-      setResumeProgress({
-        progress: 0,
-        status: 'error',
-        message: errorMessage,
-      });
+      setResumeProgress({ progress: 0, status: 'error', message: errorMessage });
     }
   };
 
-  // Upload job description from file
-  const uploadJD = async () => {
-    if (!jdFile) return;
-
+  // Upload job description from file (accepts file directly for auto-upload)
+  const uploadJDFile = async (file: File) => {
     try {
       setJDProgress({ progress: 50, status: 'uploading' });
-      const response = await api.uploadJobDescription(
-        jdFile, 
-        undefined // userEmail
-      );
+      const response = await api.uploadJobDescription(file, undefined);
       setJDId(response.id);
-      setJDProgress({ 
-        progress: 100, 
-        status: 'success',
-        message: 'Job description uploaded successfully' 
-      });
-      
-      // Track successful upload
-      trackJobDescriptionUpload(jdFile.name, jdFile.size, false);
-      
-      // Track journey step
+      setJDProgress({ progress: 100, status: 'success', message: 'Job description uploaded successfully' });
+      trackJobDescriptionUpload(file.name, file.size, false);
       trackJourneyStep('upload_jd', 2, 'upload_resume');
     } catch (error) {
       console.error('JD upload error:', error);
       let errorMessage = 'Upload failed';
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error && typeof error === 'object') {
-        errorMessage = JSON.stringify(error);
-      }
-      
-      // Track error
+      if (error instanceof Error) errorMessage = error.message;
+      else if (typeof error === 'string') errorMessage = error;
+      else if (error && typeof error === 'object') errorMessage = JSON.stringify(error);
       trackError('jd_upload_failed', errorMessage, 'UploadPage');
-      
-      setJDProgress({
-        progress: 0,
-        status: 'error',
-        message: errorMessage,
-      });
+      setJDProgress({ progress: 0, status: 'error', message: errorMessage });
     }
   };
 
@@ -375,7 +334,7 @@ export default function UploadPage() {
                         {formatFileSize(resumeFile.size)} • {resumeFile.type.split('/')[1]?.toUpperCase() || 'File'}
                       </p>
                     </div>
-                    {resumeProgress.status === 'idle' && (
+                    {resumeProgress.status !== 'uploading' && (
                       <button
                         onClick={removeResumeFile}
                         className="flex-shrink-0 text-red-600 hover:text-red-800 p-1"
@@ -388,14 +347,6 @@ export default function UploadPage() {
                     )}
                   </div>
                 </div>
-                {resumeProgress.status === 'idle' && (
-                  <button 
-                    onClick={uploadResume}
-                    className="btn-primary w-full"
-                  >
-                    Upload Resume
-                  </button>
-                )}
               </div>
             )}
 
@@ -523,14 +474,7 @@ export default function UploadPage() {
                       </div>
                     </div>
                     
-                    {jdProgress.status === 'idle' && (
-                      <button 
-                        onClick={uploadJD}
-                        className="btn-primary w-full"
-                      >
-                        Upload Job Description
-                      </button>
-                    )}
+                    {jdProgress.status === 'idle' && jdId && null}
                   </div>
                 )}
               </>
