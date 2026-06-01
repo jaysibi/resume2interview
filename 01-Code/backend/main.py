@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, status, Form, BackgroundTasks, Header
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, status, Form, BackgroundTasks, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -832,10 +832,10 @@ def gap_analysis_test(resume_id: int, jd_id: int):
 @limiter.limit("20/minute")
 def gap_analysis(
     request: Request,
-    resume_id: str,
-    jd_id: str,
-    user_email: Optional[str] = None,  # V2: Optional user context
-    create_application: bool = False,  # V2: Create application record
+    resume_id: str = Query(..., description="Public UUID of the resume"),
+    jd_id: str = Query(..., description="Public UUID of the job description"),
+    user_email: Optional[str] = Query(None, description="Optional user email"),  # V2: Optional user context
+    create_application: bool = Query(False, description="Create application record"),  # V2: Create application record
     db: Session = Depends(get_db)
 ):
     """
