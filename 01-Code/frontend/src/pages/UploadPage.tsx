@@ -28,11 +28,8 @@ export default function UploadPage() {
   const [jdInputMode, setJdInputMode] = useState<'file' | 'text'>('text');
   const [jdText, setJdText] = useState('');
   
-  // Optional metadata fields
-  const [jobUrl, setJobUrl] = useState('');
-  const [jobTitle, setJobTitle] = useState('');
-  const [company, setCompany] = useState('');
-  
+  // Optional metadata fields - removed (job URL, job title, company no longer shown)
+
   const [resumeProgress, setResumeProgress] = useState<UploadProgress>({
     progress: 0,
     status: 'idle',
@@ -182,13 +179,9 @@ export default function UploadPage() {
 
     try {
       setJDProgress({ progress: 50, status: 'uploading' });
-      // V2: Pass job URL, title, and company if available
       const response = await api.uploadJobDescription(
         jdFile, 
-        undefined, // userEmail
-        jobUrl || undefined, 
-        jobTitle || undefined, 
-        company || undefined
+        undefined // userEmail
       );
       setJDId(response.id);
       setJDProgress({ 
@@ -198,7 +191,7 @@ export default function UploadPage() {
       });
       
       // Track successful upload
-      trackJobDescriptionUpload(jdFile.name, jdFile.size, !!jobUrl);
+      trackJobDescriptionUpload(jdFile.name, jdFile.size, false);
       
       // Track journey step
       trackJourneyStep('upload_jd', 2, 'upload_resume');
@@ -249,17 +242,14 @@ export default function UploadPage() {
       setJDProgress({ progress: 50, status: 'uploading' });
       
       // Create a text file from the pasted content
-      const filename = jobTitle ? `${jobTitle}.txt` : 'job_description.txt';
+      const filename = 'job_description.txt';
       const blob = new Blob([jdText], { type: 'text/plain' });
       const file = new File([blob], filename, { type: 'text/plain' });
       
-      // Upload the JD with metadata
+      // Upload the JD
       const response = await api.uploadJobDescription(
         file,
-        undefined, // userEmail
-        jobUrl || undefined,
-        jobTitle || undefined,
-        company || undefined
+        undefined // userEmail
       );
       
       setJDId(response.id);
@@ -270,7 +260,7 @@ export default function UploadPage() {
       });
       
       // Track successful upload (text mode)
-      trackJobDescriptionUpload(filename, jdText.length, !!jobUrl);
+      trackJobDescriptionUpload(filename, jdText.length, false);
       
       // Track journey step
       trackJourneyStep('upload_jd', 2, 'upload_resume');
@@ -335,6 +325,7 @@ export default function UploadPage() {
               Resume Upload
             </h2>
             
+            {!resumeId && (
             <div className="mb-4">
               <label 
                 htmlFor="resume-upload"
@@ -358,6 +349,7 @@ export default function UploadPage() {
                 />
               </label>
             </div>
+            )}
 
             {/* Validation Error */}
             {resumeError && (
@@ -468,8 +460,7 @@ export default function UploadPage() {
 
             {jdInputMode === 'file' ? (
               // File upload mode
-              <>
-                <div className="mb-4">
+              <>                {!jdId && (                <div className="mb-4">
                   <label 
                     htmlFor="jd-upload"
                     className="flex flex-col items-center justify-center w-full h-48 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
@@ -492,6 +483,7 @@ export default function UploadPage() {
                     />
                   </label>
                 </div>
+                )}
 
                 {/* Validation Error */}
                 {jdError && (
@@ -517,7 +509,7 @@ export default function UploadPage() {
                             {formatFileSize(jdFile.size)} • {jdFile.type.split('/')[1]?.toUpperCase() || 'File'}
                           </p>
                         </div>
-                        {jdProgress.status === 'idle' && (
+                        {jdProgress.status !== 'uploading' && (
                           <button
                             onClick={removeJDFile}
                             className="flex-shrink-0 text-red-600 hover:text-red-800 p-1"
@@ -529,31 +521,6 @@ export default function UploadPage() {
                           </button>
                         )}
                       </div>
-                    </div>
-                    
-                    {/* Optional metadata fields */}
-                    <div className="space-y-2 mb-4">
-                      <input
-                        type="text"
-                        placeholder="Job URL (optional)"
-                        value={jobUrl}
-                        onChange={(e) => setJobUrl(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Job Title (optional)"
-                        value={jobTitle}
-                        onChange={(e) => setJobTitle(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Company (optional)"
-                        value={company}
-                        onChange={(e) => setCompany(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
                     </div>
                     
                     {jdProgress.status === 'idle' && (
@@ -639,31 +606,6 @@ Requirements:
                       <p className="text-sm text-gray-700">
                         ✓ Text ready ({jdText.split(/\s+/).filter(w => w.length > 0).length} words, {jdText.split('\n').length} lines)
                       </p>
-                    </div>
-                    
-                    {/* Optional metadata fields */}
-                    <div className="space-y-2 mb-4">
-                      <input
-                        type="text"
-                        placeholder="Job URL (optional)"
-                        value={jobUrl}
-                        onChange={(e) => setJobUrl(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Job Title (optional)"
-                        value={jobTitle}
-                        onChange={(e) => setJobTitle(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Company (optional)"
-                        value={company}
-                        onChange={(e) => setCompany(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
                     </div>
                     
                     {jdProgress.status === 'idle' && (
